@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+backend/vendor/
+
+# Environment files
+.env
+backend/.env
+frontend/.env.local
+
+# Build outputs
+frontend/dist/
+frontend/build/
+
+# IDE / OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+
+# Temporary test scripts
+backend/test_*.php
+backend/debug_*.php
+backend/check_*.php
+backend/clear_*.php
+backend/ensure_*.php

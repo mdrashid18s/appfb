@@ -1,0 +1,683 @@
+/* ═══════════════════════════════════════════════════════════
+   StudentTimetable — Modern High-Contrast Light Theme Aesthetic
+   ═══════════════════════════════════════════════════════════ */
+
+.container {
+  padding: 0 0 3rem 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  color: #0f172a;
+}
+
+/* ── Loading & Error States ──────────────────────────────── */
+.loadingContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 5rem 1.5rem;
+  background: #ffffff;
+  border-radius: 1.25rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03);
+}
+
+.spinner {
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 3px solid #e2e8f0;
+  border-top-color: #4f46e5;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.loadingText {
+  margin-top: 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.errorCard {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 1rem;
+  color: #991b1b;
+  margin-bottom: 2rem;
+}
+
+.errorIcon {
+  flex-shrink: 0;
+  color: #dc2626;
+}
+
+.errorTitle {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #991b1b;
+}
+
+.errorDesc {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #b91c1c;
+}
+
+/* ── Empty State ────────────────────────────────────────── */
+.emptyCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4.5rem 2rem;
+  text-align: center;
+  background: #ffffff;
+  border: 2px dashed #cbd5e1;
+  border-radius: 1.25rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+}
+
+.emptyIconBadge {
+  width: 4.5rem;
+  height: 4.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.emptyTitle {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 0.5rem 0;
+}
+
+.deptTag {
+  color: #4f46e5;
+  background: #eef2ff;
+  padding: 0.2rem 0.65rem;
+  border-radius: 0.375rem;
+  border: 1px solid #c7d2fe;
+  font-weight: 800;
+}
+
+.emptySub {
+  font-size: 0.925rem;
+  color: #475569;
+  margin: 0;
+  max-width: 28rem;
+  line-height: 1.5;
+}
+
+/* ── Today's Banner ─────────────────────────────────────── */
+.todayBanner {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 1.25rem;
+  padding: 1.5rem 1.75rem;
+  margin-bottom: 2rem;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+  position: relative;
+  overflow: hidden;
+}
+
+.todayBanner::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #4f46e5, #ec4899, #0284c7);
+}
+
+.bannerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.bannerTitleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.livePulse {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.725rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #4f46e5;
+  text-transform: uppercase;
+}
+
+.pulseDot {
+  width: 0.5rem;
+  height: 0.5rem;
+  background-color: #22c55e;
+  border-radius: 50%;
+  box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+  animation: pulseGlow 2s infinite;
+}
+
+@keyframes pulseGlow {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 8px rgba(34, 197, 94, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+  }
+}
+
+.dayHeading {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+}
+
+.deptBadge {
+  font-size: 0.85rem;
+  color: #475569;
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+  padding: 0.4rem 0.9rem;
+  border-radius: 9999px;
+  font-weight: 600;
+}
+
+.deptBadge strong {
+  color: #0f172a;
+  letter-spacing: 0.03em;
+}
+
+/* Today's No Class Box */
+.todayNoClass {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 0.875rem;
+  color: #166534;
+}
+
+.todayNoClass strong {
+  display: block;
+  font-size: 1rem;
+  color: #14532d;
+  margin-bottom: 0.25rem;
+  font-weight: 700;
+}
+
+.todayNoClass p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #15803d;
+}
+
+/* Today's Class Cards Grid */
+.todayGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.todaySlotCard {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-left-width: 5px;
+  border-radius: 0.875rem;
+  padding: 1.1rem 1.25rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.todaySlotCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px -4px rgba(0, 0, 0, 0.08);
+}
+
+.slotTimeBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.775rem;
+  font-weight: 700;
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.5rem;
+  margin-bottom: 0.75rem;
+  letter-spacing: 0.01em;
+}
+
+.slotSubjectTitle {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  line-height: 1.3;
+}
+
+.subIcon {
+  color: #4f46e5;
+  flex-shrink: 0;
+}
+
+.slotTeacherInfo {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.825rem;
+  color: #64748b;
+  padding-top: 0.5rem;
+  border-top: 1px dashed #f1f5f9;
+}
+
+.slotTeacherInfo strong {
+  color: #1e293b;
+  font-weight: 700;
+}
+
+/* ── Weekly Section & Header Group ───────────────────────── */
+.weeklyHeaderGroup {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.titleWithCount {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.weeklyTitle {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  letter-spacing: -0.01em;
+}
+
+.totalSlotCount {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #475569;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  padding: 0.3rem 0.75rem;
+  border-radius: 9999px;
+}
+
+/* View Switcher Toggle */
+.viewToggleGroup {
+  display: flex;
+  background: #e2e8f0;
+  padding: 0.2rem;
+  border-radius: 0.65rem;
+  gap: 0.2rem;
+}
+
+.toggleBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.85rem;
+  border: none;
+  background: transparent;
+  border-radius: 0.5rem;
+  font-size: 0.825rem;
+  font-weight: 700;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.toggleBtn:hover {
+  color: #0f172a;
+}
+
+.toggleActive {
+  background: #ffffff;
+  color: #4f46e5;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+}
+
+/* ── View Mode 1: Modern Table View ──────────────────────── */
+.tableCard {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 1.25rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.03);
+  overflow: hidden;
+}
+
+.tableResponsive {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.modernTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.modernTable th {
+  background: #f8fafc;
+  padding: 0.9rem 1.25rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #475569;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.modernTable td {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.9rem;
+  color: #1e293b;
+  vertical-align: middle;
+}
+
+.modernTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.modernTable tbody tr:hover {
+  background: #f8fafc;
+}
+
+.tableTodayRow {
+  background: #f5f3ff !important;
+}
+
+.tableTodayRow:hover {
+  background: #ede9fe !important;
+}
+
+.dayTd {
+  vertical-align: top !important;
+  border-right: 1px solid #f1f5f9;
+  min-width: 130px;
+}
+
+.dayTdBox {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.dayTdBox strong {
+  font-size: 1rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.tableTodayBadge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  background: #4f46e5;
+  color: #ffffff;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+  width: fit-content;
+  letter-spacing: 0.05em;
+}
+
+.tableTimeBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.5rem;
+  white-space: nowrap;
+}
+
+.tableSubjectCell {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.tableSubjectCell strong {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+
+.tableTeacherCell {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #475569;
+  font-weight: 600;
+}
+
+.unassigned {
+  color: #94a3b8;
+}
+
+.activeSlotPill {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #15803d;
+  background: #dcfce7;
+  padding: 0.25rem 0.7rem;
+  border-radius: 9999px;
+  border: 1px solid #bbf7d0;
+}
+
+.scheduledPill {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #475569;
+  background: #f1f5f9;
+  padding: 0.25rem 0.7rem;
+  border-radius: 9999px;
+  border: 1px solid #e2e8f0;
+}
+
+.noClassTd {
+  color: #94a3b8;
+  font-style: italic;
+  font-size: 0.85rem;
+}
+
+/* ── View Mode 2: Grid Column Layout ─────────────────────── */
+.gridContainer {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.875rem;
+  align-items: start;
+}
+
+@media (max-width: 1180px) {
+  .gridContainer {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .gridContainer {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .gridContainer {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Single Day Column */
+.dayColumn {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.isTodayColumn {
+  border: 2px solid #4f46e5 !important;
+  box-shadow: 0 8px 24px -4px rgba(79, 70, 229, 0.2) !important;
+}
+
+.columnHeader {
+  padding: 0.85rem 0.9rem;
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dayTitleBox {
+  display: flex;
+  flex-direction: column;
+}
+
+.dayAbbr {
+  font-size: 0.95rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  line-height: 1.1;
+}
+
+.dayFullName {
+  font-size: 0.725rem;
+  color: #475569;
+  font-weight: 700;
+  margin-top: 0.1rem;
+}
+
+.todayBadge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  background: #4f46e5;
+  color: #ffffff;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  box-shadow: 0 2px 4px rgba(79, 70, 229, 0.3);
+}
+
+.countBadge {
+  font-size: 0.725rem;
+  font-weight: 800;
+  background: #e2e8f0;
+  color: #1e293b;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+}
+
+.columnBody {
+  padding: 0.75rem 0.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  min-height: 12rem;
+  background: #fafafa;
+}
+
+.emptyDayBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 0.5rem;
+  color: #64748b;
+  font-size: 0.785rem;
+  font-weight: 600;
+  font-style: italic;
+}
+
+/* Mini Slot Card inside column */
+.miniSlotCard {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-left-width: 4px;
+  border-radius: 0.65rem;
+  padding: 0.75rem 0.8rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+  transition: all 0.2s ease;
+}
+
+.miniSlotCard:hover {
+  background: #ffffff;
+  border-color: #94a3b8;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+.miniTime {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.725rem;
+  font-weight: 800;
+  color: #334155;
+  margin-bottom: 0.35rem;
+}
+
+.miniSubject {
+  font-size: 0.875rem;
+  font-weight: 900;
+  color: #0f172a;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.miniTeacher {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.725rem;
+  color: #475569;
+  margin-top: 0.35rem;
+  font-weight: 600;
+}

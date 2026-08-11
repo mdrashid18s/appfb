@@ -1,0 +1,222 @@
+.bellContainer {
+  position: relative;
+  display: inline-block;
+}
+
+.bellBtn {
+  position: relative;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.bellBtn:hover {
+  background: #f8fafc;
+  color: #0f172a;
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
+}
+
+.bellActive {
+  color: #f97316;
+  border-color: #ffedd5;
+  background: #fff7ed;
+}
+
+.badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 0.675rem;
+  font-weight: 800;
+  padding: 0.15rem 0.4rem;
+  border-radius: 9999px;
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.4);
+}
+
+/* Dropdown Overlay */
+.dropdownModal {
+  position: absolute;
+  top: calc(100% + 0.6rem);
+  right: 0;
+  width: 360px;
+  max-width: 90vw;
+  background: #ffffff;
+  border-radius: 0.85rem;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  z-index: 9999;
+  overflow: hidden;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dropdownHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.1rem;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.headerTitle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.headerBellIcon {
+  color: #f97316;
+}
+
+.unreadPill {
+  background: #ffedd5;
+  color: #c2410c;
+  font-size: 0.725rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 9999px;
+}
+
+.markAllBtn {
+  background: transparent;
+  border: none;
+  color: #4f46e5;
+  font-size: 0.775rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.markAllBtn:hover {
+  color: #3730a3;
+  text-decoration: underline;
+}
+
+/* Notifications List */
+.notificationsList {
+  max-height: 380px;
+  overflow-y: auto;
+}
+
+.emptyBox {
+  padding: 2.5rem 1rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  color: #94a3b8;
+  font-size: 0.875rem;
+}
+
+.itemRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 0.85rem 1.1rem;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.itemRow:last-child {
+  border-bottom: none;
+}
+
+.itemRow:hover {
+  background: #f8fafc;
+}
+
+.itemUnread {
+  background: #f0f9ff;
+}
+
+.itemUnread:hover {
+  background: #e0f2fe;
+}
+
+.iconWrap {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+}
+
+.iconHomework { background: #fff7ed; color: #ea580c; border: 1px solid #ffedd5; }
+.iconTest { background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; }
+.iconNotice { background: #f3e8ff; color: #7e22ce; border: 1px solid #e9d5ff; }
+.iconSubmission { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+.iconSystem { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+
+.itemBody {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.itemTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.itemTitle {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.blueDot {
+  width: 7px;
+  height: 7px;
+  background: #2563eb;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.itemMessage {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #64748b;
+  line-height: 1.35;
+}
+
+.itemTime {
+  font-size: 0.725rem;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-top: 0.2rem;
+}
