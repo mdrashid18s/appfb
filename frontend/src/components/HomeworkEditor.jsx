@@ -412,8 +412,8 @@ export default function HomeworkEditor() {
           ) : studentSubmissions.length === 0 ? (
             <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b', background: '#fafafa', borderRadius: '0.5rem' }}>
               <CheckCircle2 size={36} color="#10b981" style={{ margin: '0 auto 0.5rem' }} />
-              <h4>No Homework Photos Uploaded Yet</h4>
-              <p>When students submit notebook photos of completed homework, they will appear here automatically.</p>
+              <h4>No Student Homework Completions Recorded Yet</h4>
+              <p>When students mark assigned homework tasks as completed, they will appear here automatically.</p>
             </div>
           ) : (
             <div className={styles.tableResponsive} style={{ overflowX: 'auto' }}>
@@ -423,9 +423,9 @@ export default function HomeworkEditor() {
                     <th style={{ padding: '0.75rem 1rem' }}>Student Name</th>
                     <th style={{ padding: '0.75rem 1rem' }}>Roll No</th>
                     <th style={{ padding: '0.75rem 1rem' }}>Subject & Task Title</th>
-                    <th style={{ padding: '0.75rem 1rem' }}>Submitted Proof</th>
+                    <th style={{ padding: '0.75rem 1rem' }}>Completion Status</th>
                     <th style={{ padding: '0.75rem 1rem' }}>Grade & Evaluation</th>
-                    <th style={{ padding: '0.75rem 1rem' }}>Submitted At</th>
+                    <th style={{ padding: '0.75rem 1rem' }}>Completed At</th>
                     <th style={{ padding: '0.75rem 1rem', textAlign: 'right' }}>Action</th>
                   </tr>
                 </thead>
@@ -444,23 +444,28 @@ export default function HomeworkEditor() {
                           <div style={{ fontSize: '0.8rem', color: '#64748b' }}>{sub.homework?.title || 'Homework Task'}</div>
                         </td>
                         <td style={{ padding: '0.75rem 1rem' }}>
-                          {photoSrc ? (
+                          <span style={{ 
+                            display: 'inline-flex', 
+                            alignItems: 'center', 
+                            gap: '0.35rem', 
+                            background: '#dcfce7', 
+                            color: '#15803d', 
+                            border: '1px solid #bbf7d0', 
+                            padding: '0.25rem 0.6rem', 
+                            borderRadius: '0.375rem', 
+                            fontSize: '0.775rem', 
+                            fontWeight: 700 
+                          }}>
+                            <CheckCircle2 size={13} /> Completed
+                          </span>
+                          {photoSrc && (
                             <div 
-                              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', background: '#f8fafc', padding: '0.25rem 0.5rem', borderRadius: '0.375rem', border: '1px solid #e2e8f0' }}
+                              style={{ marginTop: '0.3rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer', background: '#f8fafc', padding: '0.15rem 0.4rem', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }}
                               onClick={() => setPreviewPhotoUrl(photoSrc)}
-                              title="Click to inspect full notebook photo"
                             >
-                              <img 
-                                src={photoSrc} 
-                                alt="Notebook Proof" 
-                                style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '0.25rem', border: '1px solid #cbd5e1' }} 
-                              />
-                              <span style={{ fontSize: '0.75rem', color: '#0284c7', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                                <Eye size={12} /> View Photo
-                              </span>
+                              <Eye size={11} color="#0284c7" />
+                              <span style={{ fontSize: '0.7rem', color: '#0284c7', fontWeight: 600 }}>View Attachment</span>
                             </div>
-                          ) : (
-                            <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>No Photo</span>
                           )}
                         </td>
                         <td style={{ padding: '0.75rem 1rem' }}>
@@ -578,7 +583,7 @@ export default function HomeworkEditor() {
                 <input
                   type="text"
                   className={styles.textInput}
-                  placeholder="e.g. BCA2026-001"
+                  placeholder="e.g. Y5-2026-001"
                   value={studentRollNo}
                   onChange={(e) => setStudentRollNo(e.target.value)}
                   required

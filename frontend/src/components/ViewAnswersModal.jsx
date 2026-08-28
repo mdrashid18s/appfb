@@ -1,18 +1,58 @@
+/**
+ * @file ViewAnswersModal.jsx
+ * @description Admin Modal: Student dwara submit kiye gaye answers/images dekhna aur marks/grading dena.
+ *
+ * Yeh modal Admin ko allow karta hai:
+ *   1. Student dwara upload kiye gaye hand-written answer page images dekhna.
+ *   2. Har page ki image ko full-size me preview karna.
+ *   3. Student ko 0-100% ke beech grade/score assign karna aur save karna (/api/admin/student-tests/{id}/grade).
+ *
+ * @param {number|string} studentTestId - student_tests table ka primary ID.
+ * @param {string}        studentName   - Student ka full name.
+ * @param {number|string} currentScore  - Pehle se diya gaya score (agar graded hai).
+ * @param {Function}      onClose       - Modal band karne ka callback.
+ * @param {Function}      onGradeSaved  - Grade successfully save hone par parent table refresh karne ka callback.
+ */
+
 import React, { useState, useEffect } from 'react';
 import { X, Image as ImageIcon } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 
 export default function ViewAnswersModal({ studentTestId, studentName, currentScore, onClose, onGradeSaved }) {
+  
+  // ─────────────────────────────────────────────
+  // STATE VARIABLES
+  // ─────────────────────────────────────────────
+
+  /** answers: Backend se fetch kiye gaye student ke uploaded answer sheets ka array */
   const [answers, setAnswers] = useState([]);
+
+  /** score: Admin dwara enter kiya gaya grade/score (0-100) */
   const [score, setScore] = useState(currentScore !== null && currentScore !== undefined ? currentScore : '');
+
+  /** savingScore: Score save hone ke dauran button disable karne ke liye */
   const [savingScore, setSavingScore] = useState(false);
+
+  /** loading: Answer images load hote waqt indicator */
   const [loading, setLoading] = useState(true);
+
+  /** toast: Notification alerts (success/error) */
   const toast = useToast();
 
+  // ─────────────────────────────────────────────
+  // LIFECYCLE HOOKS
+  // ─────────────────────────────────────────────
+
+  /**
+   * useEffect: studentTestId badalne par ya modal khulte par answers fetch karta hai
+   */
   useEffect(() => {
     fetchAnswers();
   }, [studentTestId]);
 
+  /**
+   * fetchAnswers: Student dwara submit kiye gaye answers/photos ko API se fetch karta hai
+   */
   const fetchAnswers = async () => {
     try {
       const res = await fetch(`/api/admin/student-tests/${studentTestId}/answers`, {
@@ -31,7 +71,11 @@ export default function ViewAnswersModal({ studentTestId, studentName, currentSc
     setLoading(false);
   };
 
+  /**
+   * handleSaveScore: Admin dwara dale gaye score ko validate karke backend API me save karta hai
+   */
   const handleSaveScore = async () => {
+    // Score validation (0 - 100 range)
     if (score === '' || isNaN(score) || score < 0 || score > 100) {
       toast.error('Please enter a valid score between 0 and 100');
       return;
@@ -62,6 +106,10 @@ export default function ViewAnswersModal({ studentTestId, studentName, currentSc
     setSavingScore(false);
   };
 
+  // ─────────────────────────────────────────────
+  // JSX RENDER
+  // ─────────────────────────────────────────────
+
   return (
     <div style={{
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
@@ -72,7 +120,8 @@ export default function ViewAnswersModal({ studentTestId, studentName, currentSc
         background: 'white', borderRadius: '12px', width: '90%', maxWidth: '800px',
         maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden'
       }}>
-        {/* Header */}
+        
+        {/* Modal Header */}
         <div style={{
           padding: '16px 20px', borderBottom: '1px solid #e2e8f0', 
           display: 'flex', justifyContent: 'space-between', alignItems: 'center'
@@ -83,6 +132,7 @@ export default function ViewAnswersModal({ studentTestId, studentName, currentSc
               Answers submitted by: {studentName}
             </h3>
           </div>
+          {/* Close Button */}
           <button 
             onClick={onClose}
             style={{
@@ -95,7 +145,7 @@ export default function ViewAnswersModal({ studentTestId, studentName, currentSc
           </button>
         </div>
         
-        {/* Grading Section */}
+        {/* Grading Section: Score input aur Save button */}
         <div style={{ padding: '12px 20px', background: '#f1f5f9', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={{ fontWeight: 600, color: '#475569' }}>Grade Test:</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -122,7 +172,7 @@ export default function ViewAnswersModal({ studentTestId, studentName, currentSc
           </button>
         </div>
         
-        {/* Body */}
+        {/* Body: Uploaded Answer Images Gallery */}
         <div style={{ padding: '20px', overflowY: 'auto', flex: 1, background: '#f8fafc' }}>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>Loading answers...</div>

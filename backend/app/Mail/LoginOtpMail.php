@@ -42,7 +42,7 @@ class LoginOtpMail extends Mailable
     public function content(): Content
     {
         return new Content(
-            htmlString: "<h1>Your Login OTP is: {$this->otp}</h1><p>It will expire in {$this->expiryMinutes} minutes. Please do not share it with anyone.</p>",
+            htmlString: "<h1>Your Login OTP is: {$this->otp}</h1><p>It will expire in {$this->expiryMinutes} minutes. Please do not share it with anyone .</p>",
         );
     }
 

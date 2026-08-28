@@ -318,6 +318,100 @@
   border-radius: 50%;
 }
 
+/* ── TRANSITIONAL TOP BAR & SCROLL BUTTON ── */
+.transitional-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.75rem;
+  padding: 0.85rem 1.25rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.transitional-top-left h3 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 0.15rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.transitional-top-left p {
+  font-size: 0.78rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.transitional-scroll-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff !important;
+  border: none;
+  border-radius: 0.5rem;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.25);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.transitional-scroll-btn:hover {
+  background: linear-gradient(135deg, #0369a1 0%, #075985 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(2, 132, 199, 0.38);
+}
+
+.transitional-scroll-btn:active {
+  transform: translateY(0);
+}
+
+.transitional-count-badge {
+  background: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+  padding: 0.1rem 0.45rem;
+  border-radius: 9999px;
+  font-size: 0.72rem;
+  font-weight: 800;
+}
+
+.bounce-arrow {
+  display: inline-block;
+  font-size: 0.85rem;
+  animation: bounceDown 1.8s infinite;
+}
+
+.transitional-header-btn {
+  background: #0284c7 !important;
+  color: white !important;
+  border: none !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease !important;
+}
+
+.transitional-header-btn:hover {
+  background: #0369a1 !important;
+  transform: translateY(-1px);
+}
+
+.header-badge-count {
+  display: inline-block;
+  margin-left: 0.25rem;
+  animation: bounceDown 1.8s infinite;
+}
+
+@keyframes bounceDown {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(3px); }
+}
+
 /* Completed Tests Section */
 .completed-tests-section {
   background: white;
@@ -326,6 +420,7 @@
   margin-top: 1.5rem;
   border-top: 4px solid #0284c7;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  scroll-margin-top: 1.5rem;
 }
 
 .completed-tests-section h3 {

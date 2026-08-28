@@ -19,7 +19,7 @@ export default function SubjectDirectory({ embedded = true }) {
 
   // Add Subject Modal State
   const [showAddSubjectModal, setShowAddSubjectModal] = useState(false);
-  const [subjectForm, setSubjectForm] = useState({ name: '', department: 'BCA', type: 'theory' });
+  const [subjectForm, setSubjectForm] = useState({ name: '', department: 'Year 5', type: 'theory' });
 
   useEffect(() => {
     fetchDirectoryData();
@@ -36,7 +36,13 @@ export default function SubjectDirectory({ embedded = true }) {
       const cData = await cRes.json();
 
       if (sData.success) setSubjects(sData.subjects || []);
-      if (cData.success) setCourses(cData.courses || []);
+      if (cData.success && cData.courses) {
+        setCourses(cData.courses);
+        if (cData.courses.length > 0) {
+          const firstCode = cData.courses[0].code || cData.courses[0].name || 'Year 5';
+          setSubjectForm(prev => ({ ...prev, department: firstCode }));
+        }
+      }
     } catch (err) {
       console.error(err);
       toast.error('Failed to load subject directory');
@@ -61,7 +67,8 @@ export default function SubjectDirectory({ embedded = true }) {
       if (data.success) {
         toast.success(`Subject "${subjectForm.name}" created successfully`);
         setShowAddSubjectModal(false);
-        setSubjectForm({ name: '', department: 'BCA', type: 'theory' });
+        const defaultDept = courses.length > 0 ? (courses[0].code || courses[0].name) : 'Year 5';
+        setSubjectForm({ name: '', department: defaultDept, type: 'theory' });
         fetchDirectoryData();
       } else {
         toast.error(data.message || 'Failed to add subject');
@@ -90,11 +97,27 @@ export default function SubjectDirectory({ embedded = true }) {
     }
   };
 
-  const filteredSubjects = subjects.filter(s => {
-    const deptCode = s.course_code || 'ALL';
-    const matchDept = selectedDept === 'ALL' || deptCode.toUpperCase() === selectedDept.toUpperCase();
-    const query = search.toLowerCase().trim();
-    const matchSearch = !query || (s.name && s.name.toLowerCase().includes(query));
+  const matchesDept = (subject, targetDept) => {
+    if (!subject) return false;
+    if (!targetDept || targetDept === 'ALL') return true;
+    const target = String(targetDept).toUpperCase().trim();
+    
+    const sCode = String(subject.course_code || '').toUpperCase().trim();
+    const sCourseCode = String(subject.course?.code || '').toUpperCase().trim();
+    const sCourseName = String(subject.course?.name || subject.course_name || '').toUpperCase().trim();
+
+    if (sCode && (sCode === target || target.includes(sCode))) return true;
+    if (sCourseCode && (sCourseCode === target || target.includes(sCourseCode))) return true;
+    if (sCourseName && (sCourseName === target || target.includes(sCourseName) || sCourseName.includes(target))) return true;
+
+    return false;
+  };
+
+  const filteredSubjects = (subjects || []).filter(s => {
+    if (!s) return false;
+    const matchDept = matchesDept(s, selectedDept);
+    const query = (search || '').toLowerCase().trim();
+    const matchSearch = !query || (s.name && String(s.name).toLowerCase().includes(query));
     return matchDept && matchSearch;
   });
 
@@ -104,11 +127,11 @@ export default function SubjectDirectory({ embedded = true }) {
       <div className={styles.embeddedActionsHeader}>
         <div className={styles.statsBar}>
           <div className={styles.statCard}>
-            <span className={styles.statNumber}>{subjects.length}</span>
+            <span className={styles.statNumber}>{(subjects || []).length}</span>
             <span className={styles.statLabel}>Total Subjects</span>
           </div>
           <div className={styles.statCard}>
-            <span className={styles.statNumber}>{courses.length}</span>
+            <span className={styles.statNumber}>{(courses || []).length}</span>
             <span className={styles.statLabel}>Departments</span>
           </div>
         </div>
@@ -141,18 +164,20 @@ export default function SubjectDirectory({ embedded = true }) {
             onClick={() => setSelectedDept('ALL')}
           >
             <span>All Courses</span>
-            <span className={styles.chipBadge}>{subjects.length}</span>
+            <span className={styles.chipBadge}>{(subjects || []).length}</span>
           </button>
 
-          {courses.map(c => {
-            const count = subjects.filter(s => s.course_code && s.course_code.toUpperCase() === c.code.toUpperCase()).length;
+          {(courses || []).map((c, idx) => {
+            if (!c) return null;
+            const displayCode = String(c.code || c.name || `DEPT-${idx}`);
+            const count = (subjects || []).filter(s => matchesDept(s, displayCode)).length;
             return (
               <button 
-                key={c.id}
-                className={`${styles.deptChip} ${selectedDept === c.code ? styles.deptChipActive : ''}`}
-                onClick={() => setSelectedDept(c.code)}
+                key={c.id || idx}
+                className={`${styles.deptChip} ${String(selectedDept).toUpperCase() === displayCode.toUpperCase() ? styles.deptChipActive : ''}`}
+                onClick={() => setSelectedDept(displayCode)}
               >
-                <span>{c.code}</span>
+                <span>{displayCode}</span>
                 <span className={styles.chipBadge}>{count}</span>
               </button>
             );
@@ -255,9 +280,12 @@ export default function SubjectDirectory({ embedded = true }) {
                     value={subjectForm.department}
                     onChange={e => setSubjectForm({ ...subjectForm, department: e.target.value })}
                   >
-                    {courses.map(c => (
-                      <option key={c.id} value={c.code}>{c.code} - {c.name}</option>
-                    ))}
+                    {courses.map(c => {
+                      const codeVal = c.code || c.name || 'Year 5';
+                      return (
+                        <option key={c.id} value={codeVal}>{codeVal} - {c.name}</option>
+                      );
+                    })}
                   </select>
                 </div>
 

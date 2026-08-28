@@ -31,4 +31,29 @@ class Course extends Model
     {
         return $this->hasMany(Student::class, 'course_id', 'id');
     }
+
+    /**
+     * Model Method: Fuzzy match course ID by course title or code
+     */
+    public static function findMatchingCourse(?string $courseName): ?int
+    {
+        if (!$courseName) {
+            return null;
+        }
+
+        $courseId = static::where('name', $courseName)
+            ->orWhere('code', $courseName)
+            ->value('id');
+
+        if (!$courseId) {
+            foreach (static::all() as $c) {
+                if (str_contains(strtolower($courseName), strtolower($c->code)) ||
+                    str_contains(strtolower($c->name), strtolower(explode('–', $courseName)[0] ?? ''))) {
+                    return $c->id;
+                }
+            }
+        }
+
+        return $courseId;
+    }
 }

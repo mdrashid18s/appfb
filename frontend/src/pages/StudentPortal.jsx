@@ -15,7 +15,8 @@ import {
   AlertTriangle, 
   ClipboardList,
   CalendarDays,
-  FileText
+  FileText,
+  ShoppingBag
 } from 'lucide-react';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
@@ -25,6 +26,7 @@ import CohortContent from '../components/CohortContent';
 import StudentTimetable from '../components/StudentTimetable';
 import StudentHomework from '../components/StudentHomework';
 import StudentAnalyticsBanner from '../components/StudentAnalyticsBanner';
+import StudentStore from '../components/StudentStore';
 import styles from '../App.module.css';
 
 /**
@@ -69,6 +71,19 @@ export default function StudentPortal() {
     if (storedStudent) {
       const parsedStudent = JSON.parse(storedStudent);
       setStudent(parsedStudent);
+
+      // Fetch fresh enriched student profile from database
+      if (parsedStudent.id) {
+        fetch(`/api/student/${parsedStudent.id}/profile`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.success && data.student) {
+              setStudent(data.student);
+              localStorage.setItem('student', JSON.stringify(data.student));
+            }
+          })
+          .catch(err => console.error("Error loading student profile:", err));
+      }
       
       // Show profile completion modal ONLY for new email users
       const isNew = localStorage.getItem('isNewUser') === 'true';
@@ -240,8 +255,8 @@ export default function StudentPortal() {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, marginBottom: '6px' }}>Department <span style={{color: '#ef4444'}}>*</span></label>
-                  <input type="text" value={profileForm.department} onChange={e => setProfileForm({...profileForm, department: e.target.value})} placeholder="e.g. BCA" style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '6px', boxSizing: 'border-box' }} required />
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, marginBottom: '6px' }}>Class / Year <span style={{color: '#ef4444'}}>*</span></label>
+                  <input type="text" value={profileForm.department} onChange={e => setProfileForm({...profileForm, department: e.target.value})} placeholder="e.g. Year 5 (11+ Prep)" style={{ width: '100%', padding: '10px', border: '1px solid #cbd5e1', borderRadius: '6px', boxSizing: 'border-box' }} required />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, marginBottom: '6px' }}>Phone Number <span style={{color: '#ef4444'}}>*</span></label>
@@ -404,6 +419,14 @@ export default function StudentPortal() {
             <ArrowRightLeft size={16} />
             Transitional
           </button>
+          <button 
+            className={`${styles['tab']} ${currentPath === '/student/store' ? styles['active'] : ''}`}
+            onClick={() => { setViewMode('default'); navigate('/student/store'); }}
+            style={{ background: currentPath === '/student/store' ? 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)' : undefined, color: currentPath === '/student/store' ? '#ffffff' : undefined }}
+          >
+            <ShoppingBag size={16} />
+            Product Catalog
+          </button>
         </div>
 
         {/* Action Toggle Buttons (Homework, Timetable, Missed Tests & Test History) */}
@@ -428,9 +451,18 @@ export default function StudentPortal() {
           </button>
 
           {currentPath === '/student/transitional' ? (
-            <button className={styles['btn']} onClick={() => document.getElementById('completed-tests-section')?.scrollIntoView({ behavior: 'smooth' })}>
+            <button 
+              className={`${styles['btn']} ${styles['transitional-header-btn']}`} 
+              onClick={() => {
+                const el = document.getElementById('completed-tests-section');
+                if (el) {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+              }}
+            >
               <ClipboardList size={16} />
-              Completed Tests
+              <span>Completed Tests</span>
+              <span className={styles['header-badge-count']}>↓</span>
             </button>
           ) : (
             <>
@@ -507,6 +539,9 @@ export default function StudentPortal() {
         } />
         <Route path="/homework" element={
           <StudentHomework student={student} />
+        } />
+        <Route path="/store" element={
+          <StudentStore student={student} />
         } />
       </Routes>
     </div>

@@ -15,16 +15,29 @@
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
-body {
+html, body {
   margin: 0;
+  padding: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
   font-family: 'Inter', sans-serif;
   background-color: var(--bg-color);
   color: var(--text-primary);
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
+  min-height: 100vh;
 }
 
 h1, h2, h3, h4, h5, h6 {

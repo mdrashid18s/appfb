@@ -1,18 +1,22 @@
 /**
  * @file UnifiedLogin.jsx
- * @description Unified Authentication Page for both Students and Administrators.
- * Handles Email OTP request, OTP verification, and new Profile Registration.
+ * @description State-of-the-Art Unified Authentication Portal for XL Education.
+ * Supports Email OTP authentication for students and secure credential auth for administrators.
  */
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { 
+  Mail, Lock, User, ArrowRight, ShieldCheck, 
+  CheckCircle2, AlertCircle, Sparkles, Building2, 
+  GraduationCap, Award, ArrowLeft, RefreshCw, Key
+} from 'lucide-react';
 import styles from './UnifiedLogin.module.css';
-import { useNavigate } from 'react-router-dom';
-import '../index.css';
 
 export default function UnifiedLogin() {
   const navigate = useNavigate();
 
-  // step: 1 = Email Input, 2 = OTP Input, 3 = Register Profile
+  // step: 1 = Email Input, 2 = OTP Input
   const [step, setStep] = useState(1);
   const [loginType, setLoginType] = useState('student'); // 'student' or 'admin'
   const [loading, setLoading] = useState(false);
@@ -41,10 +45,7 @@ export default function UnifiedLogin() {
   const [adminPassword, setAdminPassword] = useState('');
 
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [mockOtp, setMockOtp] = useState('');
   const otpRefs = [useRef(), useRef(), useRef(), useRef(), useRef(), useRef()];
-
-  // No register form state needed
 
   const handleOtpChange = (index, value) => {
     if (isNaN(value)) return;
@@ -75,13 +76,11 @@ export default function UnifiedLogin() {
       });
       setOtp(newOtp);
       const nextFocus = Math.min(digits.length, 5);
-      if(otpRefs[nextFocus] && otpRefs[nextFocus].current) {
-         otpRefs[nextFocus].current.focus();
+      if (otpRefs[nextFocus] && otpRefs[nextFocus].current) {
+        otpRefs[nextFocus].current.focus();
       }
     }
   };
-
-  // Removed handleRegisterChange
 
   // Step 1: Request OTP
   const handleRequestOtp = async (e) => {
@@ -98,27 +97,24 @@ export default function UnifiedLogin() {
       const data = await response.json();
       
       if (data.success) {
+        setMessage('Verification code sent to your email! Please check your inbox.');
         setOtp(['', '', '', '', '', '']);
-        setMockOtp('');
-        setMessage('OTP sent successfully to your email! Please check your inbox (or Spam folder).');
         setStep(2);
         setCountdown(30);
         setCanResend(false);
       } else {
-        setError(data.message);
+        setError(data.message || 'Failed to send OTP. Please try again.');
       }
     } catch (err) {
-      console.error(err);
-      setError('Could not connect to the server.');
+      setError('Server connection error. Please try again later.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Resend OTP Logic
+  // Resend OTP
   const handleResendOtp = async () => {
-    if (!canResend) return;
-    
+    if (!canResend || loading) return;
     setError('');
     setMessage('');
     setLoading(true);
@@ -129,283 +125,375 @@ export default function UnifiedLogin() {
         body: JSON.stringify({ email })
       });
       const data = await response.json();
-      
       if (data.success) {
+        setMessage('A fresh verification code has been sent to your email.');
         setOtp(['', '', '', '', '', '']);
-        setMockOtp('');
-        setMessage('OTP resent successfully! Please check your email inbox.');
         setCountdown(30);
         setCanResend(false);
       } else {
-        setError(data.message);
+        setError(data.message || 'Failed to resend OTP.');
       }
     } catch (err) {
-      console.error(err);
-      setError('Could not connect to the server.');
+      setError('Error resending OTP.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Admin Login Logic
+  // Step 2: Verify OTP
+  const handleVerifyOtp = async (e) => {
+    e.preventDefault();
+    const enteredOtp = otp.join('');
+    if (enteredOtp.length < 6) {
+      setError('Please enter the complete 6-digit verification code.');
+      return;
+    }
+    setError('');
+    setLoading(true);
+    try {
+      const response = await fetch('/api/login/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ email, otp: enteredOtp })
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        localStorage.setItem('studentToken', data.access_token);
+        localStorage.setItem('token', data.access_token);
+        localStorage.setItem('userRole', 'student');
+        localStorage.setItem('user', JSON.stringify(data.user));
+        
+        if (data.student) {
+          localStorage.setItem('student', JSON.stringify(data.student));
+        }
+
+        if (data.is_new_user) {
+          localStorage.setItem('isNewUser', 'true');
+        } else {
+          localStorage.removeItem('isNewUser');
+        }
+
+        navigate('/student');
+      } else {
+        setError(data.message || 'Invalid verification code. Please check and try again.');
+      }
+    } catch (err) {
+      setError('Authentication failed. Please verify your internet connection.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Admin Login
   const handleAdminLogin = async (e) => {
     e.preventDefault();
     setError('');
-    setMessage('');
     setLoading(true);
     try {
       const response = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ id: adminId, password: adminPassword })
+        body: JSON.stringify({ login_id: adminId, id: adminId, password: adminPassword })
       });
       const data = await response.json();
       
       if (data.success) {
-        localStorage.clear();
+        const adminObj = data.admin || data.user || { id: adminId, name: 'Admin' };
+        const token = data.token || 'admin-session-token-' + Date.now();
+        localStorage.setItem('adminToken', token);
+        localStorage.setItem('token', token);
         localStorage.setItem('userRole', 'admin');
-        localStorage.setItem('adminToken', btoa(JSON.stringify({ role: 'admin', id: data.admin?.id || 'admin', time: Date.now() })));
-        localStorage.setItem('admin', JSON.stringify(data.admin));
+        localStorage.setItem('admin', JSON.stringify(adminObj));
+        localStorage.setItem('adminUser', JSON.stringify(adminObj));
         navigate('/admin/dashboard');
       } else {
-        setError(data.message || 'Invalid admin credentials');
+        setError(data.message || 'Invalid administrator credentials.');
       }
     } catch (err) {
-      console.error(err);
-      setError('Could not connect to the server.');
+      setError('Server connection error. Please try again.');
     } finally {
       setLoading(false);
     }
   };
-
-  // Step 2: Verify OTP and Login
-  const handleVerifyOtp = async (e) => {
-    e.preventDefault();
-    setError('');
-    setMessage('');
-    setLoading(true);
-
-    const otpString = otp.join('');
-    if (otpString.length !== 6) {
-      setError('Please enter a valid 6-digit OTP');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/login/verify-otp', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ email, otp: otpString })
-      });
-      const data = await response.json();
-      
-      if (data.success) {
-        const isNew = data.is_new_user ? 'true' : 'false';
-        localStorage.clear();
-        
-        if (data.access_token) {
-          localStorage.setItem('token', data.access_token);
-        }
-        
-        if (isNew === 'true') {
-          localStorage.setItem('isNewUser', 'true');
-        }
-
-        if (data.user.role === 'admin') {
-          localStorage.setItem('userRole', 'admin');
-          localStorage.setItem('adminToken', data.access_token || btoa(JSON.stringify({ role: 'admin', time: Date.now() })));
-          localStorage.setItem('admin', JSON.stringify(data.user));
-          navigate('/admin/dashboard');
-        } else {
-          localStorage.setItem('userRole', 'student');
-          localStorage.setItem('studentToken', data.access_token || btoa(JSON.stringify({ role: 'student', time: Date.now() })));
-          localStorage.setItem('student', JSON.stringify(data.student || data.user));
-          navigate('/student');
-        }
-      } else {
-        setError(data.message || 'Invalid OTP');
-      }
-
-    } catch (err) {
-      console.error(err);
-      setError('Could not connect to the server.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Removed handleRegister
 
   return (
-    <div className={styles['unified-login-wrapper']}>
-      <div className={styles['unified-login-card']}>
-        
-        <div className={styles['unified-hero-section']}>
-          <img src="/student-hero.png" alt="Student Reading" className={styles['hero-img']} />
-          <div className={styles['hero-overlay-text']}>
-            <h2>Welcome to XL Education</h2>
-            <p>Your complete assessment portal</p>
-          </div>
+    <div className={styles.pageWrapper}>
+      <div className={styles.bgGlow1} />
+      <div className={styles.bgGlow2} />
+
+      {/* ── 1. MINIMALIST TOP HEADER ──────────────────────────── */}
+      <header className={styles.topNav}>
+        <div className={styles.brandLogo} onClick={() => navigate('/')}>
+          <img src="/logo.svg" alt="XL Education" className={styles.brandLogoImg} />
+          <span className={styles.brandText}>XL Education</span>
+          <span className={styles.brandBadge}>UK Portal</span>
         </div>
 
-        <div className={styles['unified-form-section']}>
-          <div className={styles['form-brand']}>
-            <div className={styles['brand-logo-small']}>XL</div>
-            <span>XL Education</span>
-          </div>
+        <button className={styles.navActionBtn} onClick={() => navigate('/')}>
+          <ArrowLeft size={14} /> Back to Home
+        </button>
+      </header>
 
-          <div className={styles['form-header']} style={{ marginBottom: '1rem' }}>
-            <h1>
-              {loginType === 'admin' ? "Admin Access" : (
-                <>
-                  {step === 1 && "Sign In"}
-                  {step === 2 && "Verify OTP"}
-                </>
-              )}
-            </h1>
-            <p>
-              {loginType === 'admin' ? "Enter your admin credentials" : (
-                <>
-                  {step === 1 && "Enter your email to receive an OTP"}
-                  {step === 2 && "Enter the 6-digit code sent to your email"}
-                </>
-              )}
-            </p>
-          </div>
+      {/* ── 2. MAIN CENTERED AUTH CARD ────────────────────────── */}
+      <main className={styles.mainContainer}>
+        <div className={styles.authCard}>
+          
+          {/* 🌟 LEFT SHOWCASE PANEL */}
+          <div className={styles.leftShowcase}>
+            <div>
+              <div className={styles.showcaseTopTag}>
+                <Sparkles size={14} />
+                <span>Premier 11+ &amp; GCSE Tuition</span>
+              </div>
 
-          <div className={styles['toggle-container']}>
-            <div 
-              className={`${styles['toggle-btn']} ${loginType === 'student' ? styles['active'] : ''}`}
-              onClick={() => { setLoginType('student'); setError(''); setMessage(''); }}
-            >
-              Student
+              <div className={styles.showcaseContent}>
+                <h2>Excellence in Grammar School Preparation</h2>
+                <p>
+                  Access your interactive learning timetable, online mock tests, progress analytics, and assigned tuition centre schedule.
+                </p>
+
+                <div className={styles.statsPillsGrid}>
+                  <div className={styles.statPillItem}>
+                    <div className={styles.statIconBox}>
+                      <Award size={18} />
+                    </div>
+                    <div>
+                      <h4 className={styles.statTitle}>98.4% Success Rate</h4>
+                      <p className={styles.statSubtitle}>UK Grammar &amp; Independent School Admissions</p>
+                    </div>
+                  </div>
+
+                  <div className={styles.statPillItem}>
+                    <div className={styles.statIconBox}>
+                      <Building2 size={18} />
+                    </div>
+                    <div>
+                      <h4 className={styles.statTitle}>5 Premier Centres</h4>
+                      <p className={styles.statSubtitle}>Reading, Slough, Sutton, Basingstoke, Manchester</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <div 
-              className={`${styles['toggle-btn']} ${loginType === 'admin' ? styles['active'] : ''}`}
-              onClick={() => { setLoginType('admin'); setError(''); setMessage(''); }}
-            >
-              Admin
+
+            <div className={styles.showcaseFooterNote}>
+              <ShieldCheck size={16} color="#10b981" />
+              <span>Encrypted Student &amp; Parent Data Protection</span>
             </div>
-            <div className={`${styles['toggle-slider']} ${loginType === 'admin' ? styles['admin-mode'] : ''}`}></div>
           </div>
 
-          {error && <div className={styles['login-error-alert']}>{error}</div>}
-          {message && <div className={styles['login-error-alert']} style={{backgroundColor: '#e6ffe6', color: '#006600', borderColor: '#b3ffb3'}}>{message}</div>}
+          {/* 📝 RIGHT AUTH FORM SECTION */}
+          <div className={styles.rightFormSection}>
+            
+            {/* Segmented Role Switcher */}
+            <div className={styles.roleSwitcherWrap}>
+              <button
+                type="button"
+                className={`${styles.roleSwitchBtn} ${loginType === 'student' ? styles.roleSwitchBtnActive : ''}`}
+                onClick={() => { setLoginType('student'); setError(''); setMessage(''); setStep(1); }}
+              >
+                <GraduationCap size={16} /> Student Portal
+              </button>
+              <button
+                type="button"
+                className={`${styles.roleSwitchBtn} ${loginType === 'admin' ? styles.roleSwitchBtnActive : ''}`}
+                onClick={() => { setLoginType('admin'); setError(''); setMessage(''); }}
+              >
+                <ShieldCheck size={16} /> Admin Access
+              </button>
+            </div>
 
-          <div className={styles['forms-area']}>
-            {/* ADMIN LOGIN FORM */}
+            {/* Form Header */}
+            <div className={styles.formHeader}>
+              <h1 className={styles.formTitle}>
+                {loginType === 'admin' 
+                  ? 'Administrator Login' 
+                  : step === 1 
+                  ? 'Welcome to XL Education' 
+                  : 'Verify Security Code'}
+              </h1>
+              <p className={styles.formSubtitle}>
+                {loginType === 'admin'
+                  ? 'Enter your administrative credentials to manage portal data.'
+                  : step === 1
+                  ? 'Enter your registered email address to receive an instant login code.'
+                  : `Enter the 6-digit verification code sent to ${email}`}
+              </p>
+            </div>
+
+            {/* Alerts */}
+            {message && (
+              <div className={styles.alertSuccess}>
+                <CheckCircle2 size={16} />
+                <span>{message}</span>
+              </div>
+            )}
+
+            {error && (
+              <div className={styles.alertError}>
+                <AlertCircle size={16} />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {/* 🛡️ ADMIN LOGIN FORM */}
             {loginType === 'admin' && (
-              <form onSubmit={handleAdminLogin} className={`${styles['login-form-container']} ${styles['slide-in-left']}`}>
-                <div className={styles['input-group']}>
-                  <label>Admin ID</label>
-                  <input 
-                    type="text" 
-                    value={adminId} 
-                    onChange={(e) => setAdminId(e.target.value)} 
-                    placeholder="e.g. rashid" 
-                    required 
-                  />
+              <form onSubmit={handleAdminLogin}>
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>Admin ID / Username</label>
+                  <div className={styles.inputWrapper}>
+                    <User size={18} className={styles.inputIcon} />
+                    <input 
+                      type="text" 
+                      className={styles.formInput}
+                      value={adminId} 
+                      onChange={(e) => setAdminId(e.target.value)} 
+                      placeholder="e.g. admin" 
+                      required 
+                    />
+                  </div>
                 </div>
-                <div className={styles['input-group']}>
-                  <label>Password</label>
-                  <input 
-                    type="password" 
-                    value={adminPassword} 
-                    onChange={(e) => setAdminPassword(e.target.value)} 
-                    placeholder="••••••••" 
-                    required 
-                  />
+
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>Password</label>
+                  <div className={styles.inputWrapper}>
+                    <Lock size={18} className={styles.inputIcon} />
+                    <input 
+                      type="password" 
+                      className={styles.formInput}
+                      value={adminPassword} 
+                      onChange={(e) => setAdminPassword(e.target.value)} 
+                      placeholder="••••••••" 
+                      required 
+                    />
+                  </div>
                 </div>
-                <button type="submit" className={`${styles['submit-btn']} ${styles['orange-btn']}`} disabled={loading} style={{ marginTop: '1rem' }}>
-                  {loading ? 'Logging in...' : 'Login as Admin'}
+
+                <button 
+                  type="submit" 
+                  className={styles.submitBtn} 
+                  disabled={loading}
+                >
+                  {loading ? 'Authenticating...' : 'Sign In as Administrator'}
+                  <ArrowRight size={16} />
                 </button>
               </form>
             )}
 
-            {/* STEP 1: REQUEST OTP */}
+            {/* 👨‍🎓 STUDENT STEP 1: REQUEST EMAIL OTP */}
             {loginType === 'student' && step === 1 && (
-              <form onSubmit={handleRequestOtp} className={`${styles['login-form-container']} ${styles['slide-in-left']}`}>
-                <div className={styles['input-group']}>
-                  <label>Email Address</label>
-                  <input 
-                    type="email" 
-                    name="email" 
-                    value={email} 
-                    onChange={(e) => setEmail(e.target.value)} 
-                    placeholder="e.g. name@example.com" 
-                    required 
-                  />
+              <form onSubmit={handleRequestOtp}>
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>Student or Parent Email</label>
+                  <div className={styles.inputWrapper}>
+                    <Mail size={18} className={styles.inputIcon} />
+                    <input 
+                      type="email" 
+                      name="email" 
+                      className={styles.formInput}
+                      value={email} 
+                      onChange={(e) => setEmail(e.target.value)} 
+                      placeholder="name@example.com" 
+                      required 
+                      autoFocus
+                    />
+                  </div>
                 </div>
-                <button type="submit" className={`${styles['submit-btn']} ${styles['orange-btn']}`} disabled={loading} style={{ marginTop: '1rem' }}>
-                  {loading ? 'Sending OTP...' : 'Send OTP'}
+
+                <button 
+                  type="submit" 
+                  className={styles.submitBtn} 
+                  disabled={loading}
+                >
+                  {loading ? 'Sending Code...' : 'Send Verification Code'}
+                  <ArrowRight size={16} />
                 </button>
+
+                <div className={styles.registerPromptWrap}>
+                  <span>New to XL Education?</span>
+                  <a 
+                    href="#" 
+                    className={styles.registerLink}
+                    onClick={(e) => { e.preventDefault(); navigate('/register'); }}
+                  >
+                    Register for 2026/27 Admission →
+                  </a>
+                </div>
               </form>
             )}
 
-            {/* STEP 2: VERIFY OTP */}
+            {/* 👨‍🎓 STUDENT STEP 2: VERIFY OTP */}
             {loginType === 'student' && step === 2 && (
-              <form onSubmit={handleVerifyOtp} className={`${styles['login-form-container']} ${styles['slide-in-left']}`}>
-                <div className={styles['input-group']}>
-                  <label>OTP Code</label>
-                  <div className={styles['otp-container']}>
+              <form onSubmit={handleVerifyOtp}>
+                <div className={styles.formGroup}>
+                  <label className={styles.formLabel}>6-Digit Verification Code</label>
+                  
+                  <div className={styles.otpBoxGrid}>
                     {otp.map((digit, index) => (
                       <input
                         key={index}
                         ref={otpRefs[index]}
                         type="text"
-                        className={styles['otp-box']}
+                        className={styles.otpInputBox}
                         value={digit}
                         onChange={(e) => handleOtpChange(index, e.target.value)}
                         onKeyDown={(e) => handleOtpKeyDown(index, e)}
                         onPaste={handleOtpPaste}
                         maxLength={1}
                         required
+                        autoFocus={index === 0}
                       />
                     ))}
                   </div>
-                  {mockOtp && (
-                    <div style={{ marginTop: '0.8rem', padding: '0.5rem 0.8rem', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', color: '#166534', fontSize: '0.85rem', fontWeight: '600', textAlign: 'center' }}>
-                      🔑 Your OTP Code: <span style={{ fontSize: '1rem', letterSpacing: '2px', color: '#15803d' }}>{mockOtp}</span> (Auto-filled)
-                    </div>
-                  )}
                 </div>
-                <button type="submit" className={`${styles['submit-btn']} ${styles['orange-btn']}`} disabled={loading} style={{ marginTop: '1rem' }}>
-                  {loading ? 'Verifying...' : 'Login'}
+
+                <button 
+                  type="submit" 
+                  className={styles.submitBtn} 
+                  disabled={loading}
+                >
+                  {loading ? 'Verifying & Accessing Portal...' : 'Verify & Enter Portal'}
+                  <ArrowRight size={16} />
                 </button>
-                <div style={{marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                  <a href="#" onClick={(e) => { e.preventDefault(); setStep(1); }} style={{color: '#ff6b35', fontSize: '0.9rem', fontWeight: '500'}}>
-                    Change Email
-                  </a>
-                  
+
+                <div className={styles.subActionsRow}>
+                  <button 
+                    type="button" 
+                    className={styles.textBtn}
+                    onClick={() => { setStep(1); setError(''); }}
+                  >
+                    ← Change Email
+                  </button>
+
                   <button 
                     type="button" 
                     onClick={handleResendOtp}
                     disabled={!canResend || loading}
-                    style={{
-                      background: 'none', 
-                      border: 'none', 
-                      color: canResend ? '#ea580c' : '#94a3b8', 
-                      fontSize: '0.9rem',
-                      fontWeight: '600',
-                      cursor: canResend ? 'pointer' : 'not-allowed',
-                      textDecoration: canResend ? 'underline' : 'none'
-                    }}
+                    className={`${styles.resendBtn} ${canResend ? styles.resendActive : styles.resendDisabled}`}
                   >
-                    {canResend ? 'Resend OTP' : `Resend in ${countdown}s`}
+                    {canResend ? 'Resend Code' : `Resend in ${countdown}s`}
                   </button>
                 </div>
               </form>
             )}
 
           </div>
-          {/* Signup prompt removed since auto-registration via OTP is active */}
         </div>
-      </div>
+      </main>
 
-      <div className={styles['unified-footer']}>
-        © 2026 All rights reserved <strong>educationpro</strong>
-      </div>
+      {/* ── 3. CLEAN SINGLE-LINE AUTH FOOTER ─────────────────── */}
+      <footer className={styles.authFooter}>
+        <div>&copy; {new Date().getFullYear()} XL Education Ltd. All rights reserved. Registered UK Tuition Provider.</div>
+        <div className={styles.authFooterLinks}>
+          <a href="#" onClick={(e) => { e.preventDefault(); navigate('/'); }}>Home</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); navigate('/register'); }}>Registration</a>
+          <a href="#">Privacy Policy</a>
+          <a href="#">Terms of Service</a>
+          <a href="#">Security &amp; GDPR</a>
+        </div>
+      </footer>
+
     </div>
   );
 }

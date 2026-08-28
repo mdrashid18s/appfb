@@ -173,26 +173,20 @@ export default function TestResultsView({ embedded = true }) {
             className={`${styles.deptChip} ${selectedDept === 'ALL' ? styles.deptChipActive : ''}`}
             onClick={() => setSelectedDept('ALL')}
           >
-            <span>All Departments</span>
+            <span>All Classes</span>
           </button>
-          <button 
-            className={`${styles.deptChip} ${selectedDept === 'BCA' ? styles.deptChipActive : ''}`}
-            onClick={() => setSelectedDept('BCA')}
-          >
-            <span>BCA</span>
-          </button>
-          <button 
-            className={`${styles.deptChip} ${selectedDept === 'BBA' ? styles.deptChipActive : ''}`}
-            onClick={() => setSelectedDept('BBA')}
-          >
-            <span>BBA</span>
-          </button>
-          <button 
-            className={`${styles.deptChip} ${selectedDept === 'BCOM' ? styles.deptChipActive : ''}`}
-            onClick={() => setSelectedDept('BCOM')}
-          >
-            <span>BCOM</span>
-          </button>
+          {(Array.from(new Set(results.map(r => r.department).filter(Boolean))).length > 0
+            ? Array.from(new Set(results.map(r => r.department).filter(Boolean)))
+            : ['Year 3', 'Year 4', 'Year 5', 'Year 6', 'Year 7', 'Year 8', 'Year 9', 'Year 10', 'Year 11', 'GCSE', 'A-Level']
+          ).map(dept => (
+            <button 
+              key={dept}
+              className={`${styles.deptChip} ${selectedDept === dept ? styles.deptChipActive : ''}`}
+              onClick={() => setSelectedDept(dept)}
+            >
+              <span>{dept}</span>
+            </button>
+          ))}
         </div>
       </div>
 

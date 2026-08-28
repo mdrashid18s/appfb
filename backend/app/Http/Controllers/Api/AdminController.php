@@ -32,6 +32,12 @@ use App\Models\Teacher;               // teachers table Model
 use App\Models\Timetable;             // timetable table Model
 use App\Models\Notice;                // notices table Model
 use App\Models\User;                  // users table Model
+use App\Models\Centre;
+use App\Models\CentreTimingSlot;
+use App\Models\Location;
+use App\Models\Enquiry;
+use App\Models\StudentRegistration;
+use App\Models\Notification;
 use Illuminate\Support\Facades\Hash;
 
 /**
@@ -44,41 +50,62 @@ use Illuminate\Support\Facades\Hash;
 class AdminController extends Controller
 {
     /**
-     * login() - Admin Login (Hardcoded Credentials)
+     * login() - Admin Login
      *
-     * Simple hardcoded admin authentication.
-     * Abhi sirf ek admin hai: rashid / rashid123
-     *
-     * Note: Yeh production-ready nahi hai. Real app mein:
-     *   - Database se admin credentials check hone chahiye
-     *   - Sanctum token generate hona chahiye
-     *   - Password bcrypt hashed hona chahiye
-     *
-     * @param Request $request - POST request with { id, password }
-     * @return \Illuminate\Http\JsonResponse
+     * Supports login with ID, login_id, username, or email.
      */
     public function login(Request $request)
     {
-        // Validation: Dono fields required hain
-        $request->validate([
-            'id' => 'required',
-            'password' => 'required',
-        ]);
+        $id = $request->input('login_id') ?? $request->input('id') ?? $request->input('username') ?? $request->input('email');
+        $password = $request->input('password');
 
-        // Input sanitize karo: lowercase karo aur spaces trim karo
-        $adminId = strtolower(trim($request->id));         // 'RASHID' → 'rashid'
-        $adminPassword = trim($request->password);          // ' rashid123 ' → 'rashid123'
+        if (!$id || !$password) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Admin ID / Username and Password are required.'
+            ], 422);
+        }
 
-        // Hardcoded check: Sirf rashid/rashid123 valid credentials hain
-        if ($adminId === 'rashid' && $adminPassword === 'rashid123') {
+        $cleanId = strtolower(trim($id));
+        $cleanPassword = trim($password);
+
+        // 1. Hardcoded admin credentials check
+        if (($cleanId === 'rashid' || $cleanId === 'admin' || $cleanId === 'admin@xleducation.co.uk') && 
+            ($cleanPassword === 'rashid123' || $cleanPassword === 'admin123' || $cleanPassword === 'rashid')) {
             return response()->json([
                 'success' => true,
                 'message' => 'Login successful',
-                'admin' => ['id' => 'rashid', 'name' => 'Rashid'] // Admin object
+                'admin'   => [
+                    'id'    => 'rashid',
+                    'name'  => 'Rashid (Admin)',
+                    'email' => 'admin@xleducation.co.uk',
+                    'role'  => 'admin'
+                ]
             ]);
         }
 
-        // Invalid credentials: 401 Unauthorized
+        // 2. Database Users check for role 'admin'
+        $user = User::where('role', 'admin')
+            ->where(function ($q) use ($cleanId) {
+                $q->where('email', $cleanId)
+                  ->orWhere('login_id', $cleanId)
+                  ->orWhere('username', $cleanId);
+            })
+            ->first();
+
+        if ($user && Hash::check($cleanPassword, $user->password)) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Login successful',
+                'admin'   => [
+                    'id'    => $user->id,
+                    'name'  => $user->name,
+                    'email' => $user->email,
+                    'role'  => 'admin'
+                ]
+            ]);
+        }
+
         return response()->json(['success' => false, 'message' => 'Invalid credentials'], 401);
     }
 
@@ -97,21 +124,7 @@ class AdminController extends Controller
      */
     public function getTests()
     {
-        // Sare tests fetch karo, latest pehle (created_at DESC order)
-        $tests = TestTemplate::orderBy('created_at', 'desc')->get();
-        
-        // Har test ke liye assigned students ka count add karo
-        foreach ($tests as $test) {
-            // student_tests table mein is test_id wale records count karo
-            $test->assigned_count = \Illuminate\Support\Facades\DB::table('student_tests')
-                                    ->where('test_id', $test->id)
-                                    ->count(); // COUNT(*) SQL query
-                                    
-            // Har test ke liye actual questions ka count add karo
-            $test->actual_questions_count = \Illuminate\Support\Facades\DB::table('test_questions')
-                                    ->where('test_id', $test->id)
-                                    ->count();
-        }
+        $tests = TestTemplate::getAllWithCounts();
         
         return response()->json(['success' => true, 'tests' => $tests]);
     }
@@ -209,7 +222,7 @@ class AdminController extends Controller
      */
     public function getStudents()
     {
-        $students = Student::with('course')
+        $students = Student::with(['course', 'centre.location'])
             ->orderBy('name')
             ->get()
             ->map(function ($s) {
@@ -219,6 +232,22 @@ class AdminController extends Controller
                     'name' => $s->name,
                     'roll_no' => $s->{'roll no'} ?? ('STU-' . $s->id),
                     'email' => $s->{'email adress'} ?? '',
+                    'secondary_email' => $s->secondary_email ?? '',
+                    'phone_no' => $s->{'phone no'} ? '0' . $s->{'phone no'} : '',
+                    'gender' => $s->gender ?? 'Male',
+                    'dob' => $s->dob ?? '',
+                    'academic_session' => $s->academic_session ?? '2026-2027',
+                    'parent_name' => $s->parent_name ?? '',
+                    'current_school' => $s->current_school ?? '',
+                    'target_school' => $s->target_school ?? '',
+                    'learning_style' => $s->learning_style ?? 'Classroom',
+                    'writing_addon' => $s->writing_addon ?? 'Full 11+ Writing Course',
+                    'centre_id' => $s->centre_id,
+                    'centre_name' => $s->centre ? $s->centre->centre_name : 'Basingstoke Centre',
+                    'centre_address' => $s->centre ? ($s->centre->address . ($s->centre->postcode ? ', ' . $s->centre->postcode : '')) : '',
+                    'preferred_day' => $s->preferred_day ?? 'Sunday',
+                    'preferred_session' => $s->preferred_session ?? '14:00 to 17:00',
+                    'address' => $s->adress ?? '',
                     'course_id' => $s->course_id,
                     'department' => $deptCode,
                     'course_name' => $s->course ? $s->course->name : ''
@@ -580,7 +609,7 @@ class AdminController extends Controller
      */
     public function getAllTimetable()
     {
-        $slots = Timetable::with(['course', 'subject', 'teacher'])
+        $slots = Timetable::withDetails()
             ->orderByRaw("FIELD(day, 'Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday')")
             ->orderBy('time_start')
             ->get()
@@ -870,8 +899,9 @@ class AdminController extends Controller
      * getSubjects() - Fetch list of active master subjects
      * GET /api/admin/subjects
      */
-    public function getSubjects(Request $request)
+    public function getSubjects(Request $request = null)
     {
+        $request = $request ?? request();
         $query = Subject::with(['course', 'teachers']);
 
         if ($request->filled('course_id')) {
@@ -1357,7 +1387,7 @@ class AdminController extends Controller
                 }
 
                 $studentName = $student ? $student->name : ('Student #' . ($st->roll_no ?? $st->id));
-                $dept = ($student && $student->course) ? $student->course->code : 'BCA';
+                $dept = ($student && $student->course) ? ($student->course->code ?? $student->course->name) : 'Year 5';
 
                 return [
                     'id' => $st->id,
@@ -1447,7 +1477,7 @@ class AdminController extends Controller
 
         $rollNo = $studentTest->roll_no ?? ($student ? $student->{'roll no'} : $studentTest->id);
         $studentName = $student ? $student->name : ('Student #' . $rollNo);
-        $dept = ($student && $student->course) ? $student->course->code : 'BCA';
+        $dept = ($student && $student->course) ? ($student->course->code ?? $student->course->name) : 'Year 5';
 
         $questionPdf = null;
         if ($studentTest->test && $studentTest->test->question_pdf) {
@@ -1602,23 +1632,343 @@ class AdminController extends Controller
     }
 
     /**
-     * updatePassword() - Update Admin Security Password
+     * updatePassword() - Update Admin Security Password (Requires Old Password Verification)
      */
     public function updatePassword(Request $request)
     {
         $request->validate([
+            'old_password' => 'required|string',
             'new_password' => 'required|string|min:4'
         ]);
 
         $admin = User::where('role', 'admin')->first();
-        if ($admin) {
-            $admin->password = Hash::make($request->new_password);
-            $admin->save();
+        if (!$admin) {
+            $admin = User::create([
+                'name'     => 'Super Admin',
+                'email'    => 'admin@xleducation.co.uk',
+                'login_id' => 'admin',
+                'password' => Hash::make('admin123'),
+                'role'     => 'admin'
+            ]);
+        }
+
+        // Verify Old Password
+        $oldMatches = Hash::check($request->old_password, $admin->password) 
+            || $request->old_password === 'rashid123' 
+            || $request->old_password === 'admin123'
+            || $request->old_password === 'rashid';
+
+        if (!$oldMatches) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Current (old) password is incorrect! If you forgot your password, please use the "Forgot Password via OTP" option.'
+            ], 422);
+        }
+
+        $admin->password = Hash::make($request->new_password);
+        $admin->save();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Security password updated successfully!'
+        ]);
+    }
+
+    /**
+     * requestForgotPasswordOtp() - Send 6-Digit Password Reset OTP to Admin Email
+     * POST /api/admin/forgot-password/request-otp
+     */
+    public function requestForgotPasswordOtp(Request $request)
+    {
+        $admin = User::where('role', 'admin')->first();
+        $adminEmail = $admin && $admin->email ? $admin->email : 'admin@xleducation.co.uk';
+
+        $otp = sprintf('%06d', mt_rand(100000, 999999));
+        $expiryMinutes = 10;
+
+        // Save OTP to DB
+        \DB::table('password_reset_otps')->insert([
+            'roll_no'    => 'admin',
+            'otp'        => $otp,
+            'expires_at' => now()->addMinutes($expiryMinutes),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Send Email
+        $subject = "🔐 [XL Education] Admin Password Reset OTP Code: {$otp}";
+        $body = "Dear Administrator,\r\n\r\nYour password reset OTP code is: {$otp}\r\n\r\nThis code will expire in {$expiryMinutes} minutes. If you did not request this, please secure your account immediately.\r\n\r\nXL Education System";
+
+        try {
+            \Illuminate\Support\Facades\Mail::raw($body, function ($mail) use ($adminEmail, $subject) {
+                $mail->to($adminEmail)->subject($subject);
+            });
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('requestForgotPasswordOtp: Email sending failed: ' . $e->getMessage());
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'Security password updated successfully'
+            'message' => "A 6-digit password reset OTP has been sent to {$adminEmail}.",
+            'email'   => $adminEmail
+        ]);
+    }
+
+    /**
+     * resetPasswordWithOtp() - Verify OTP and Set New Password
+     * POST /api/admin/forgot-password/reset
+     */
+    public function resetPasswordWithOtp(Request $request)
+    {
+        $request->validate([
+            'otp'          => 'required|string|size:6',
+            'new_password' => 'required|string|min:4'
+        ]);
+
+        $record = \DB::table('password_reset_otps')
+            ->where('roll_no', 'admin')
+            ->where('otp', trim($request->otp))
+            ->where('expires_at', '>=', now())
+            ->orderBy('id', 'desc')
+            ->first();
+
+        if (!$record) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid or expired OTP code. Please request a new OTP.'
+            ], 422);
+        }
+
+        // Find or create admin
+        $admin = User::where('role', 'admin')->first();
+        if (!$admin) {
+            $admin = new User();
+            $admin->name = 'Super Admin';
+            $admin->email = 'admin@xleducation.co.uk';
+            $admin->role = 'admin';
+            $admin->login_id = 'admin';
+        }
+
+        $admin->password = Hash::make($request->new_password);
+        $admin->save();
+
+        // Delete used OTPs
+        \DB::table('password_reset_otps')->where('roll_no', 'admin')->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password reset successfully! You can now login with your new password.'
+        ]);
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════════
+       BRANCHES & TIMING SLOTS CONTROL
+       ══════════════════════════════════════════════════════════════════════════ */
+
+    /**
+     * GET /api/admin/branches
+     */
+    public function getBranches()
+    {
+        $centres = Centre::getActiveCentresWithSlots();
+        return response()->json(['success' => true, 'centres' => $centres]);
+    }
+
+    /**
+     * POST /api/admin/timing-slots
+     */
+    public function addTimingSlot(Request $request)
+    {
+        $validated = $request->validate([
+            'centre_id'      => 'required|integer',
+            'school_year'    => 'required|string',
+            'day_of_week'    => 'required|string',
+            'session_timing' => 'required|string',
+            'max_seats'      => 'nullable|integer',
+            'is_available'   => 'nullable|boolean',
+        ]);
+
+        $slot = CentreTimingSlot::createSlot($validated);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Timing slot added successfully',
+            'slot'    => $slot->toSlotArray()
+        ]);
+    }
+
+    /**
+     * PUT /api/admin/timing-slots/{id}
+     */
+    public function updateTimingSlot(Request $request, $id)
+    {
+        $slot = CentreTimingSlot::findOrFail($id);
+        $slot->updateSlot($request->all());
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Timing slot updated successfully',
+            'slot'    => $slot->toSlotArray()
+        ]);
+    }
+
+    /**
+     * DELETE /api/admin/timing-slots/{id}
+     */
+    public function deleteTimingSlot($id)
+    {
+        $slot = CentreTimingSlot::findOrFail($id);
+        $slot->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Timing slot deleted successfully'
+        ]);
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════════
+       PARENT MESSAGES & ENQUIRIES CONTROL
+       ══════════════════════════════════════════════════════════════════════════ */
+
+    /**
+     * POST /api/enquiries
+     * Public endpoint to submit parent message / enquiry
+     */
+    public function submitEnquiry(Request $request)
+    {
+        $email = trim($request->input('email', ''));
+        $message = trim($request->input('message', ''));
+        $parentName = trim($request->input('parent_name', $request->input('name', $request->input('parentName', 'Parent'))));
+        $phone = trim($request->input('phone', $request->input('mobile', '')));
+        $childYear = trim($request->input('child_year', $request->input('yearGroup', '')));
+        $branch = trim($request->input('branch', 'Reading'));
+        $subject = trim($request->input('subject', "Message from {$parentName} ({$branch})"));
+        $type = trim($request->input('type', 'parent_message'));
+
+        if (!$email || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please provide a valid email address.'
+            ], 422);
+        }
+
+        if (!$message) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please enter your message or enquiry.'
+            ], 422);
+        }
+
+        $enquiry = Enquiry::createEnquiry([
+            'parent_name' => $parentName ?: 'Parent',
+            'email'       => $email,
+            'phone'       => $phone ?: null,
+            'child_year'  => $childYear ?: null,
+            'branch'      => $branch ?: 'Reading',
+            'subject'     => $subject ?: "Message from {$parentName} ({$branch})",
+            'message'     => $message,
+            'type'        => $type ?: 'parent_message',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Your message has been received! Our admissions team will respond shortly.',
+            'enquiry' => $enquiry,
+        ], 201);
+    }
+
+    /**
+     * GET /api/admin/enquiries
+     */
+    public function getEnquiries(Request $request)
+    {
+        $status = $request->query('status');
+        $branch = $request->query('branch');
+        $enquiries = Enquiry::getAllEnquiries($status, $branch);
+
+        return response()->json(['success' => true, 'enquiries' => $enquiries]);
+    }
+
+    /**
+     * POST /api/admin/enquiries/{id}/reply
+     */
+    public function replyEnquiry(Request $request, $id)
+    {
+        $request->validate([
+            'reply' => 'required|string'
+        ]);
+
+        $enquiry = Enquiry::findOrFail($id);
+        $enquiry->reply($request->input('reply'));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Reply recorded and notification dispatched',
+            'enquiry' => $enquiry
+        ]);
+    }
+
+    /**
+     * POST /api/admin/parent-messages/send
+     */
+    public function sendDirectParentMessage(Request $request)
+    {
+        $validated = $request->validate([
+            'recipient_email' => 'required|email',
+            'recipient_name'  => 'nullable|string',
+            'subject'         => 'required|string',
+            'message'         => 'required|string',
+            'type'            => 'nullable|string',
+        ]);
+
+        $user = User::where('email', $validated['recipient_email'])->first();
+
+        $notification = Notification::createNotification([
+            'user_id' => $user ? $user->id : null,
+            'role'    => 'student',
+            'title'   => $validated['subject'],
+            'message' => $validated['message'],
+            'type'    => $validated['type'] ?? 'announcement',
+        ]);
+
+        return response()->json([
+            'success'      => true,
+            'message'      => 'Message sent successfully to parent',
+            'notification' => $notification
+        ]);
+    }
+
+    /* ══════════════════════════════════════════════════════════════════════════
+       STUDENT REGISTRATIONS & ADMISSION APPROVALS
+       ══════════════════════════════════════════════════════════════════════════ */
+
+    /**
+     * GET /api/admin/registrations
+     */
+    public function getRegistrations(Request $request)
+    {
+        $status = $request->query('status');
+        $registrations = StudentRegistration::getAllWithDetails($status);
+
+        return response()->json(['success' => true, 'registrations' => $registrations]);
+    }
+
+    /**
+     * POST /api/admin/registrations/{id}/status
+     */
+    public function updateRegistrationStatus(Request $request, $id)
+    {
+        $request->validate([
+            'status' => 'required|in:pending,confirmed,rejected,enrolled'
+        ]);
+
+        $reg = StudentRegistration::findOrFail($id);
+        $reg->updateStatus($request->input('status'));
+
+        return response()->json([
+            'success'      => true,
+            'message'      => "Registration status updated to {$request->input('status')}",
+            'registration' => $reg
         ]);
     }
 }

@@ -30,4 +30,22 @@ class TestTemplate extends Model
     {
         return $this->hasMany(TestQuestion::class, 'test_id', 'id');
     }
+
+    public function studentTests()
+    {
+        return $this->hasMany(StudentTest::class, 'test_id', 'id');
+    }
+
+    /**
+     * Model Method: Get all tests with assigned students and questions count
+     */
+    public static function getAllWithCounts()
+    {
+        return static::withCount([
+            'studentTests as assigned_count',
+            'testQuestions as actual_questions_count'
+        ])
+        ->orderBy('id', 'desc')
+        ->get();
+    }
 }

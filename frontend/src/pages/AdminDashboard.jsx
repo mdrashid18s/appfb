@@ -29,7 +29,14 @@ import {
   Award,
   Megaphone,
   Settings,
-  FileText
+  FileText,
+  ShoppingBag,
+  Building2,
+  MessageSquare,
+  UserCheck,
+  ChevronDown,
+  Layers,
+  School
 } from 'lucide-react';
 import AssignTestModal from '../components/AssignTestModal';
 import AssignedStudentsModal from '../components/AssignedStudentsModal';
@@ -41,8 +48,11 @@ import StudentDirectory from './StudentDirectory';
 import TestResultsView from './TestResultsView';
 import NoticeboardView from './NoticeboardView';
 import AdminSettingsView from './AdminSettingsView';
+import AdminStoreView from './AdminStoreView';
+import AdminBranchesView from './AdminBranchesView';
+import AdminParentMessagesView from './AdminParentMessagesView';
+import SiteFooter from '../components/SiteFooter';
 import SubjectDirectory from './SubjectDirectory';
-import QuestionBankModal from '../components/QuestionBankModal';
 import NotificationBell from '../components/NotificationBell';
 import { useToast } from '../contexts/ToastContext';
 
@@ -50,8 +60,33 @@ export default function AdminDashboard({ admin, onLogout }) {
   const navigate = useNavigate();
   const toast = useToast();
 
-  /** Active tab view: 'tests' or 'timetable' */
+  /** Active tab view */
   const [activeTab, setActiveTab] = useState('tests');
+
+  /** Collapsible Navigation Groups state */
+  const [openGroups, setOpenGroups] = useState({
+    academics: true,
+    operations: false,
+    admissions: false,
+  });
+
+  const toggleGroup = (groupKey) => {
+    setOpenGroups(prev => ({
+      ...prev,
+      [groupKey]: !prev[groupKey]
+    }));
+  };
+
+  // Auto-expand group if active tab belongs to it
+  useEffect(() => {
+    if (['tests', 'results', 'homework', 'subjects'].includes(activeTab)) {
+      setOpenGroups(p => ({ ...p, academics: true }));
+    } else if (['branches', 'timetable', 'notices', 'store'].includes(activeTab)) {
+      setOpenGroups(p => ({ ...p, operations: true }));
+    } else if (['parent_messages', 'students', 'faculty'].includes(activeTab)) {
+      setOpenGroups(p => ({ ...p, admissions: true }));
+    }
+  }, [activeTab]);
 
   /** Mobile sidebar open drawer state */
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -67,7 +102,6 @@ export default function AdminDashboard({ admin, onLogout }) {
 
   /** Currently selected test object for viewing assigned students modal */
   const [selectedTestForView, setSelectedTestForView] = useState(null);
-  const [selectedTestForQuestions, setSelectedTestForQuestions] = useState(null);
 
   /** Form state holding field values for creating a new test template */
   const [form, setForm] = useState({
@@ -91,7 +125,7 @@ export default function AdminDashboard({ admin, onLogout }) {
     fetchTests();
     fetchCourses();
     fetchDashboardStats();
-  }, []);
+  }, [activeTab]);
 
   const fetchDashboardStats = async () => {
     try {
@@ -240,9 +274,7 @@ export default function AdminDashboard({ admin, onLogout }) {
       <aside className={`${styles.sidebar} ${mobileSidebarOpen ? styles.sidebarOpen : ''}`}>
         {/* Sidebar Brand Header */}
         <div className={styles.sidebarHeader}>
-          <div className={styles.brandIconBox}>
-            <span className={styles.brandLogoText}>XL</span>
-          </div>
+          <img src="/logo.svg" alt="XL Education" className={styles.brandLogoImg} />
           <div className={styles.brandTitleWrap}>
             <h2 className={styles.brandTitle}>XL Education</h2>
             <span className={styles.brandBadge}>Super Admin</span>
@@ -260,6 +292,7 @@ export default function AdminDashboard({ admin, onLogout }) {
           <button
             className={`${styles.navItem} ${activeTab === 'tests' ? styles.navItemActive : ''}`}
             onClick={() => { setActiveTab('tests'); setMobileSidebarOpen(false); }}
+            title="Test Templates"
           >
             <ClipboardList size={18} className={styles.navIcon} />
             <span>Test Templates</span>
@@ -267,53 +300,9 @@ export default function AdminDashboard({ admin, onLogout }) {
           </button>
 
           <button
-            className={`${styles.navItem} ${activeTab === 'timetable' ? styles.navItemActive : ''}`}
-            onClick={() => { setActiveTab('timetable'); setMobileSidebarOpen(false); }}
-          >
-            <CalendarDays size={18} className={styles.navIcon} />
-            <span>Timetable Manager</span>
-            <ChevronRight size={14} className={styles.navArrow} />
-          </button>
-
-          <button
-            className={`${styles.navItem} ${activeTab === 'homework' ? styles.navItemActive : ''}`}
-            onClick={() => { setActiveTab('homework'); setMobileSidebarOpen(false); }}
-          >
-            <FileText size={18} className={styles.navIcon} />
-            <span>Homework Manager</span>
-            <ChevronRight size={14} className={styles.navArrow} />
-          </button>
-
-          <button
-            className={`${styles.navItem} ${activeTab === 'faculty' ? styles.navItemActive : ''}`}
-            onClick={() => { setActiveTab('faculty'); setMobileSidebarOpen(false); }}
-          >
-            <GraduationCap size={18} className={styles.navIcon} />
-            <span>Faculty Directory</span>
-            <ChevronRight size={14} className={styles.navArrow} />
-          </button>
-
-          <button
-            className={`${styles.navItem} ${activeTab === 'students' ? styles.navItemActive : ''}`}
-            onClick={() => { setActiveTab('students'); setMobileSidebarOpen(false); }}
-          >
-            <Users size={18} className={styles.navIcon} />
-            <span>Student Directory</span>
-            <ChevronRight size={14} className={styles.navArrow} />
-          </button>
-
-          <button
-            className={`${styles.navItem} ${activeTab === 'subjects' ? styles.navItemActive : ''}`}
-            onClick={() => { setActiveTab('subjects'); setMobileSidebarOpen(false); }}
-          >
-            <BookOpen size={18} className={styles.navIcon} />
-            <span>Subject Directory</span>
-            <ChevronRight size={14} className={styles.navArrow} />
-          </button>
-
-          <button
             className={`${styles.navItem} ${activeTab === 'results' ? styles.navItemActive : ''}`}
             onClick={() => { setActiveTab('results'); setMobileSidebarOpen(false); }}
+            title="Test Results"
           >
             <Award size={18} className={styles.navIcon} />
             <span>Test Results</span>
@@ -321,8 +310,89 @@ export default function AdminDashboard({ admin, onLogout }) {
           </button>
 
           <button
+            className={`${styles.navItem} ${activeTab === 'homework' ? styles.navItemActive : ''}`}
+            onClick={() => { setActiveTab('homework'); setMobileSidebarOpen(false); }}
+            title="Homework Manager"
+          >
+            <FileText size={18} className={styles.navIcon} />
+            <span>Homework Manager</span>
+            <ChevronRight size={14} className={styles.navArrow} />
+          </button>
+
+          <button
+            className={`${styles.navItem} ${activeTab === 'timetable' ? styles.navItemActive : ''}`}
+            onClick={() => { setActiveTab('timetable'); setMobileSidebarOpen(false); }}
+            title="Timetable Manager"
+          >
+            <CalendarDays size={18} className={styles.navIcon} />
+            <span>Timetable Manager</span>
+            <ChevronRight size={14} className={styles.navArrow} />
+          </button>
+
+          <button
+            className={`${styles.navItem} ${activeTab === 'branches' ? styles.navItemActive : ''}`}
+            onClick={() => { setActiveTab('branches'); setMobileSidebarOpen(false); }}
+            title="Branches & Locations"
+          >
+            <Building2 size={18} className={styles.navIcon} />
+            <span>Branches & Locations</span>
+            <ChevronRight size={14} className={styles.navArrow} />
+          </button>
+
+          <button
+            className={`${styles.navItem} ${activeTab === 'parent_messages' ? styles.navItemActive : ''}`}
+            onClick={() => { setActiveTab('parent_messages'); setMobileSidebarOpen(false); }}
+            title="Parent Messages"
+          >
+            <MessageSquare size={18} className={styles.navIcon} />
+            <span>Parent Messages</span>
+            <ChevronRight size={14} className={styles.navArrow} />
+          </button>
+
+          <button
+            className={`${styles.navItem} ${activeTab === 'store' ? styles.navItemActive : ''}`}
+            onClick={() => { setActiveTab('store'); setMobileSidebarOpen(false); }}
+            title="Product Catalog"
+          >
+            <ShoppingBag size={18} className={styles.navIcon} />
+            <span>Product Store</span>
+            <ChevronRight size={14} className={styles.navArrow} />
+          </button>
+
+          <button
+            className={`${styles.navItem} ${activeTab === 'students' ? styles.navItemActive : ''}`}
+            onClick={() => { setActiveTab('students'); setMobileSidebarOpen(false); }}
+            title="Student Directory"
+          >
+            <Users size={18} className={styles.navIcon} />
+            <span>Students Directory</span>
+            <ChevronRight size={14} className={styles.navArrow} />
+          </button>
+
+          <button
+            className={`${styles.navItem} ${activeTab === 'faculty' ? styles.navItemActive : ''}`}
+            onClick={() => { setActiveTab('faculty'); setMobileSidebarOpen(false); }}
+            title="Faculty Directory"
+          >
+            <GraduationCap size={18} className={styles.navIcon} />
+            <span>Faculty Directory</span>
+            <ChevronRight size={14} className={styles.navArrow} />
+          </button>
+
+          <button
+            className={`${styles.navItem} ${activeTab === 'subjects' ? styles.navItemActive : ''}`}
+            onClick={() => { setActiveTab('subjects'); setMobileSidebarOpen(false); }}
+            title="Subject Directory"
+          >
+            <BookOpen size={18} className={styles.navIcon} />
+            <span>Subject Directory</span>
+            <ChevronRight size={14} className={styles.navArrow} />
+          </button>
+
+          <button
             className={`${styles.navItem} ${activeTab === 'notices' ? styles.navItemActive : ''}`}
             onClick={() => { setActiveTab('notices'); setMobileSidebarOpen(false); }}
+            title="Noticeboard"
           >
             <Megaphone size={18} className={styles.navIcon} />
             <span>Noticeboard</span>
@@ -332,22 +402,12 @@ export default function AdminDashboard({ admin, onLogout }) {
           <button
             className={`${styles.navItem} ${activeTab === 'settings' ? styles.navItemActive : ''}`}
             onClick={() => { setActiveTab('settings'); setMobileSidebarOpen(false); }}
+            title="Settings"
           >
             <Settings size={18} className={styles.navIcon} />
             <span>Settings</span>
             <ChevronRight size={14} className={styles.navArrow} />
           </button>
-
-          <div className={styles.sidebarStatsBox} style={{ marginTop: '12px' }}>
-            <div className={styles.statRow}>
-              <span className={styles.statTitle}>Saved Templates:</span>
-              <span className={styles.statValue}>{tests.length}</span>
-            </div>
-            <div className={styles.statRow}>
-              <span className={styles.statTitle}>Active Courses:</span>
-              <span className={styles.statValue}>{masterCourses.length}</span>
-            </div>
-          </div>
         </nav>
 
         {/* Sidebar Footer User Card */}
@@ -496,6 +556,27 @@ export default function AdminDashboard({ admin, onLogout }) {
           {activeTab === 'notices' && (
             <div className={styles.contentCard}>
               <NoticeboardView embedded={true} />
+            </div>
+          )}
+
+          {/* ── Store & Orders Tab ── */}
+          {activeTab === 'store' && (
+            <div className={styles.contentCard}>
+              <AdminStoreView />
+            </div>
+          )}
+
+          {/* ── Branches & Locations Tab ── */}
+          {activeTab === 'branches' && (
+            <div className={styles.contentCard} style={{ padding: 0, overflow: 'hidden' }}>
+              <AdminBranchesView />
+            </div>
+          )}
+
+          {/* ── Parent Messages & Enquiries Tab ── */}
+          {activeTab === 'parent_messages' && (
+            <div className={styles.contentCard} style={{ padding: 0, overflow: 'hidden' }}>
+              <AdminParentMessagesView />
             </div>
           )}
 
@@ -695,14 +776,6 @@ export default function AdminDashboard({ admin, onLogout }) {
                                   <UserPlus size={14} /> Assign Test
                                 </button>
                                 <button 
-                                  className={styles['assign-btn']}
-                                  style={{ background: '#f8fafc', color: '#475569', border: '1px solid #cbd5e1' }}
-                                  onClick={() => setSelectedTestForQuestions(test)}
-                                  title="Manage MCQ Questions"
-                                >
-                                  <HelpCircle size={14} /> Questions
-                                </button>
-                                <button 
                                   className={styles['delete-btn']}
                                   onClick={() => handleDeleteTest(test.id)}
                                   title="Delete Template"
@@ -742,9 +815,6 @@ export default function AdminDashboard({ admin, onLogout }) {
                             <button className={styles['assign-btn']} onClick={() => setSelectedTestToAssign(test)}>
                               <UserPlus size={14} /> Assign Test
                             </button>
-                            <button className={styles['assign-btn']} style={{ background: '#f8fafc', color: '#475569', border: '1px solid #cbd5e1' }} onClick={() => setSelectedTestForQuestions(test)}>
-                              <HelpCircle size={14} /> MCQ
-                            </button>
                             <div 
                               className={styles['assigned-pill']}
                               onClick={() => setSelectedTestForView(test)}
@@ -763,6 +833,11 @@ export default function AdminDashboard({ admin, onLogout }) {
               </div>
             </>
           )}
+
+          {/* Unified Site Footer */}
+          <div style={{ marginTop: '3rem', margin: '3rem -2rem -2rem', overflow: 'hidden', borderRadius: '0 0 1rem 1rem' }}>
+            <SiteFooter showFloatingWa={false} />
+          </div>
         </div>
       </main>
 
@@ -785,14 +860,6 @@ export default function AdminDashboard({ admin, onLogout }) {
           onUpdate={() => {
             fetchTests();
           }}
-        />
-      )}
-
-      {/* Question Bank Modal Overlay */}
-      {selectedTestForQuestions && (
-        <QuestionBankModal
-          test={selectedTestForQuestions}
-          onClose={() => setSelectedTestForQuestions(null)}
         />
       )}
     </div>

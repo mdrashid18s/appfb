@@ -1,6 +1,16 @@
 /**
  * @file StudentSubmissionModal.jsx
- * @description Student modal for reviewing submitted test answers (both MCQ option key review & uploaded written answer sheets/PDF).
+ * @description Student Portal Modal: Submit kiye gaye test ke results, answers, score aur question paper ka complete review dekhna.
+ *
+ * Yeh modal Student ko allow karta hai:
+ *   1. Test ka Final Score & Evaluation Status (Pass / Fail / Pending Evaluation) dekhna.
+ *   2. MCQ Answer Key: Kaunsa option student ne select kiya aur kaunsa sahi/galat tha (Green/Red highlights ke sath).
+ *   3. Uploaded Answer Sheets: Agar student ne written paper upload kiya tha toh un sheets ki photos dekhna.
+ *   4. Question Paper PDF: Test paper ki PDF ko secure viewer me dekhna aur download karna.
+ *
+ * @param {number|string} studentTestId - student_tests table ka record ID.
+ * @param {string}        testName      - Test ka title / name.
+ * @param {Function}      onClose       - Modal band karne ka callback.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -10,16 +20,40 @@ import SecurePdfViewer from './SecurePdfViewer';
 import { useToast } from '../contexts/ToastContext';
 
 export default function StudentSubmissionModal({ studentTestId, testName, onClose }) {
+
+  // ─────────────────────────────────────────────
+  // 1. STATE VARIABLES
+  // ─────────────────────────────────────────────
+
+  /** loading: Backend se submission data load hote waqt loading spinner ke liye */
   const [loading, setLoading] = useState(true);
+
+  /** submission: Backend se aaya pura submission data (score, mcq_review, uploaded_answers, pdf_url) */
   const [submission, setSubmission] = useState(null);
-  const [activeTab, setActiveTab] = useState('mcq'); // 'mcq', 'pdf', 'photos'
+
+  /** activeTab: Active review tab - 'mcq' (MCQs key), 'photos' (Answer sheets), ya 'pdf' (Question paper) */
+  const [activeTab, setActiveTab] = useState('mcq');
+
+  /** selectedPhoto: Kisi uploaded image ko full-screen popup me preview karne ke liye image URL */
   const [selectedPhoto, setSelectedPhoto] = useState(null);
+
+  /** toast: Notification alert helper */
   const toast = useToast();
 
+  // ─────────────────────────────────────────────
+  // 2. LIFECYCLE HOOKS
+  // ─────────────────────────────────────────────
+
+  /**
+   * useEffect: Modal open hone par ya studentTestId badalne par submission data fetch karta hai
+   */
   useEffect(() => {
     fetchSubmission();
   }, [studentTestId]);
 
+  /**
+   * fetchSubmission: /api/student/tests/{id}/submission se student ka result aur answers fetch karta hai
+   */
   const fetchSubmission = async () => {
     try {
       const res = await fetch(`/api/student/tests/${studentTestId}/submission`, {
@@ -28,7 +62,8 @@ export default function StudentSubmissionModal({ studentTestId, testName, onClos
       const data = await res.json();
       if (data.success) {
         setSubmission(data);
-        // Default tab selection logic
+        
+        // Auto-select initial tab based on available data
         if (data.mcq_review && data.mcq_review.length > 0) {
           setActiveTab('mcq');
         } else if (data.uploaded_answers && data.uploaded_answers.length > 0) {
@@ -47,6 +82,10 @@ export default function StudentSubmissionModal({ studentTestId, testName, onClos
     }
   };
 
+  // ─────────────────────────────────────────────
+  // 3. EXTRACTED VALUES FOR UI
+  // ─────────────────────────────────────────────
+
   const studentTest = submission?.student_test;
   const testInfo = submission?.test;
   const mcqReview = submission?.mcq_review || [];
@@ -56,10 +95,18 @@ export default function StudentSubmissionModal({ studentTestId, testName, onClos
   const scorePct = studentTest?.score;
   const hasScore = scorePct !== null && scorePct !== undefined;
 
+  // ─────────────────────────────────────────────
+  // 4. JSX RENDERING
+  // ─────────────────────────────────────────────
+
   return (
+    // Background Overlay: Bahar click karne par modal close hota hai
     <div className={styles.overlay} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      
+      {/* Modal Main Box */}
       <div className={styles.modalBox}>
-        {/* Modal Header */}
+        
+        {/* ── Section A: Header (Test Title + Score Badge + Close Button) ── */}
         <div className={styles.modalHeader}>
           <div className={styles.headerTitleGroup}>
             <span className={styles.headerSubtitle}>Submission & Answer Key Review</span>
@@ -67,6 +114,7 @@ export default function StudentSubmissionModal({ studentTestId, testName, onClos
           </div>
 
           <div className={styles.headerRight}>
+            {/* Score Badge: Graded hai toh Pass/Fail score dikhata hai, warna 'Evaluation Pending' */}
             {hasScore ? (
               <div className={`${styles.scoreBadge} ${scorePct >= 50 ? styles.scorePass : styles.scoreFail}`}>
                 <Award size={16} />
@@ -78,15 +126,17 @@ export default function StudentSubmissionModal({ studentTestId, testName, onClos
                 <span>Evaluation Pending</span>
               </div>
             )}
+            {/* Close Button */}
             <button className={styles.closeBtn} onClick={onClose} title="Close Modal">
               <X size={20} />
             </button>
           </div>
         </div>
 
-        {/* Tab Navigation */}
+        {/* ── Section B: Tab Navigation (MCQ / Photos / PDF) ── */}
         {!loading && (
           <div className={styles.tabNav}>
+            {/* Tab 1: MCQ Answer Key Tab */}
             {mcqReview.length > 0 && (
               <button 
                 className={`${styles.tabBtn} ${activeTab === 'mcq' ? styles.activeTab : ''}`}
@@ -97,6 +147,7 @@ export default function StudentSubmissionModal({ studentTestId, testName, onClos
               </button>
             )}
 
+            {/* Tab 2: Uploaded Written Sheets Tab */}
             {uploadedAnswers.length > 0 && (
               <button 
                 className={`${styles.tabBtn} ${activeTab === 'photos' ? styles.activeTab : ''}`}
@@ -107,6 +158,7 @@ export default function StudentSubmissionModal({ studentTestId, testName, onClos
               </button>
             )}
 
+            {/* Tab 3: Question Paper PDF Tab */}
             {pdfUrl && (
               <button 
                 className={`${styles.tabBtn} ${activeTab === 'pdf' ? styles.activeTab : ''}`}
@@ -134,7 +186,7 @@ export default function StudentSubmissionModal({ studentTestId, testName, onClos
           </div>
         )}
 
-        {/* Modal Body */}
+        {/* ── Section C: Modal Body Content ── */}
         <div className={styles.modalBody}>
           {loading ? (
             <div className={styles.loadingBox}>
@@ -143,7 +195,7 @@ export default function StudentSubmissionModal({ studentTestId, testName, onClos
             </div>
           ) : (
             <>
-              {/* TAB 1: MCQ Answers Key Review */}
+              {/* TAB 1 CONTENT: MCQ Answer Key with Color Coding */}
               {activeTab === 'mcq' && (
                 <div className={styles.mcqContainer}>
                   {mcqReview.length === 0 ? (
@@ -158,6 +210,7 @@ export default function StudentSubmissionModal({ studentTestId, testName, onClos
 
                       return (
                         <div key={q.id || idx} className={styles.questionCard}>
+                          {/* Question Header: Number, Marks & Correct/Incorrect/Skipped Status */}
                           <div className={styles.questionHeader}>
                             <span className={styles.qNum}>Question {idx + 1}</span>
                             <span className={styles.qMarks}>{q.marks || 1} Marks</span>
@@ -172,8 +225,10 @@ export default function StudentSubmissionModal({ studentTestId, testName, onClos
                             </div>
                           </div>
 
+                          {/* Question Text */}
                           <h4 className={styles.qText}>{q.question_text}</h4>
 
+                          {/* Options List (A, B, C, D) with User Selection & Correct Answer highlights */}
                           <div className={styles.optionsList}>
                             {['A', 'B', 'C', 'D'].map(opt => {
                               const optionVal = q[`option_${opt.toLowerCase()}`];
@@ -182,6 +237,7 @@ export default function StudentSubmissionModal({ studentTestId, testName, onClos
                               const isSelected = q.selected_option === opt;
                               const isCorrectOpt = q.correct_option === opt;
 
+                              // Highlight styling classes
                               let optionClass = styles.optionItem;
                               if (isSelected && isCorrectOpt) optionClass = `${styles.optionItem} ${styles.optCorrectSelected}`;
                               else if (isSelected && !isCorrectOpt) optionClass = `${styles.optionItem} ${styles.optWrongSelected}`;
@@ -207,7 +263,7 @@ export default function StudentSubmissionModal({ studentTestId, testName, onClos
                 </div>
               )}
 
-              {/* TAB 2: Uploaded Answer Sheet Photos */}
+              {/* TAB 2 CONTENT: Uploaded Answer Sheet Photos */}
               {activeTab === 'photos' && (
                 <div className={styles.photosContainer}>
                   {uploadedAnswers.length === 0 ? (
@@ -240,7 +296,7 @@ export default function StudentSubmissionModal({ studentTestId, testName, onClos
                 </div>
               )}
 
-              {/* TAB 3: Question Paper PDF */}
+              {/* TAB 3 CONTENT: Question Paper PDF Viewer */}
               {activeTab === 'pdf' && (
                 <div className={styles.pdfViewerContainer}>
                   {pdfUrl ? (
@@ -258,7 +314,7 @@ export default function StudentSubmissionModal({ studentTestId, testName, onClos
         </div>
       </div>
 
-      {/* Full Photo Preview Modal */}
+      {/* ── Section D: Full Photo Preview Modal ── */}
       {selectedPhoto && (
         <div className={styles.photoModalOverlay} onClick={() => setSelectedPhoto(null)}>
           <div className={styles.photoModalBox}>

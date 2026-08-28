@@ -1,117 +1,139 @@
 /**
  * @file AssignTestModal.jsx
- * @description Admin Modal: Students ko Test Assign Karna.
+ * @description Admin Modal: Students ko Test Assign Karna aur Test Settings Configure Karna.
  *
- * Yeh component admin ko kisi specific test ko students ke roll numbers par assign karne deta hai.
- * Admin yahan se:
- *   - Test delivery mode set kar sakta hai (Online Web Browser / Offline Paper)
- *   - Test ka start date & time set kar sakta hai
- *   - Test ka expiry date & time set kar sakta hai (auto-lock)
- *   - Department ke hisab se students filter kar sakta hai
- *   - Name ya roll se search kar sakta hai
- *   - Individual ya sare visible students select kar sakta hai (Select All)
- *   - Selected students ko test assign kar sakta hai
+ * Yeh component Admin ko kisi specific test ko students par assign karne ki suvidha deta hai:
+ *   1. Test Content Check: PDF paper upload karna ya MCQs questions manage karna.
+ *   2. Delivery Mode: Online (Web Browser) ya Offline (Paper based) mode chunna.
+ *   3. Schedule & Timings: Start date/time aur Expiry date/time (auto-lock) set karna (DatePicker se).
+ *   4. Department Filtering: Dynamic departments ke hisaab se filter karna (Year 3 - Year 11, GCSE, A-Level etc.).
+ *   5. Search & Selection: Student name ya roll number se search karna, individual ya "Select All" chunna.
+ *   6. API Assignment: Selected students ko test assign karna (/api/admin/assign).
  *
- * @param {Object}   test            - Test object jo assign karna hai (id, name, code)
- * @param {Function} onClose         - Modal band karne ka callback
- * @param {Function} onAssignSuccess - Successful assignment ke baad parent ko refresh karne ka callback
+ * @param {Object}   test            - Test object jise assign kiya ja raha hai (id, name, code, question_pdf, actual_questions_count).
+ * @param {Function} onClose         - Modal band karne ka callback function.
+ * @param {Function} onAssignSuccess - Successful test assign hone ke baad parent component refresh karne ka callback.
  */
 
 import React, { useState, useEffect } from 'react';
 import styles from './AssignTestModal.module.css'; // CSS Modules styling
 
-// Icons: X=Close, Clock=Schedule header, Zap=Mode icon, Calendar=Start window,
-// Search=Search input, User=Footer count, ArrowRight=Assign button,
-// CheckSquare=Header icon, GraduationCap=Filter header
-import { Plus, Search, Check, AlertCircle, X, ChevronRight, Clock, Calendar, Shield, Settings, Copy, BarChart2, Zap, AlertTriangle, CheckSquare, GraduationCap, User, ArrowRight, Upload, FileText, CheckCircle } from 'lucide-react';
+// Lucide React Icons: UI elements aur visual indicators ke liye
+import { 
+  Plus, Search, Check, AlertCircle, X, ChevronRight, Clock, Calendar, 
+  Shield, Settings, Copy, BarChart2, Zap, AlertTriangle, CheckSquare, 
+  GraduationCap, User, ArrowRight, Upload, FileText, CheckCircle 
+} from 'lucide-react';
+
+// Global Toast Context: Success aur Error alert notifications dikhane ke liye
 import { useToast } from '../contexts/ToastContext';
+
+// React Datepicker & date-fns: Date aur Time select karne ke liye
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { format } from 'date-fns';
+
+// Manage Questions Modal: Test ke andar MCQs add/edit/delete karne ke liye sub-modal
 import ManageQuestionsModal from './ManageQuestionsModal';
 
 /**
  * AssignTestModal Component
- * Modal ka layout do panels mein bata gaya hai:
- *   LEFT PANEL:  Schedule & Mode configuration (time, dates, delivery mode)
- *   RIGHT PANEL: Students list with filter + search + checkbox selection
- *   FOOTER:      Selection count + Cancel + Assign button
+ * Modal Structure:
+ *   - Header: Test Code, Name aur Close (X) button.
+ *   - Mobile Tabs: Mobile screen par 'Students' aur 'Schedule' panels ke beech switch karne ke tabs.
+ *   - Left Panel: Delivery Mode, Test Content (PDF/MCQ), Start Time & Expiry Time (React DatePicker).
+ *   - Right Panel: Department Filter Tabs, Search Bar, Select All Checkbox aur Students List.
+ *   - Footer: Live Selected Count, Cancel Button, Assign Button.
  */
 export default function AssignTestModal({ test, onClose, onAssignSuccess }) {
 
   // ─────────────────────────────────────────────
-  // STATE VARIABLES
+  // 1. STATE VARIABLES (Component ki Memory)
   // ─────────────────────────────────────────────
 
-  /** students: Backend se aaye sare students ki list */
+  /** students: Backend se aane wale sabhi registered students ka array */
   const [students, setStudents] = useState([]);
 
-  /** toast: Success/Error messages ke liye global toast helper */
+  /** toast: Notification popup helper (toast.success, toast.error) */
   const toast = useToast();
 
+  /** localTest: Test details ki local copy (PDF upload ya MCQ count update hone par instant sync hoti hai) */
   const [localTest, setLocalTest] = useState(test);
+
+  /** showManageQuestions: True hone par MCQ Manage Questions ka popup modal open hota hai */
   const [showManageQuestions, setShowManageQuestions] = useState(false);
+
+  /** isUploadingPdf: PDF file upload process chalne ke dauran loading spinner/status ke liye */
   const [isUploadingPdf, setIsUploadingPdf] = useState(false);
 
-  /** loading: true hone par students fetch ho rahi hain */
+  /** loading: Backend se students aur departments load hote waqt loading message dikhane ke liye */
   const [loading, setLoading] = useState(true);
 
-  /** filterDept: Active department filter ('All', 'BCA', 'BBA', 'BCom') */
+  /** masterDepts: Database se fetch kiye gaye dynamic departments ki list (Default: Year 3 - A-Level) */
+  const [masterDepts, setMasterDepts] = useState([
+    'Year 3', 'Year 4', 'Year 5', 'Year 6', 'Year 7', 
+    'Year 8', 'Year 9', 'Year 10', 'Year 11', 'GCSE', 'A-Level'
+  ]);
+
+  /** filterDept: Department filter tab jo user ne click kiya hai ('All' ya specific department) */
   const [filterDept, setFilterDept] = useState('All');
 
-  /** searchQuery: Search input mein user ne kya type kiya hai */
+  /** searchQuery: Search bar me student name ya roll number jo type kiya gaya hai */
   const [searchQuery, setSearchQuery] = useState('');
 
   /**
-   * selectedStudents: Checked students ka Set (JavaScript Set data structure).
-   * Set isliye use kiya kyunki:
-   *   - Duplicate nahi hote (roll number unique hai)
-   *   - O(1) lookup hoti hai has() se
-   *   - Add/delete efficient hoti hai
+   * selectedStudents: Chune gaye students ke roll numbers ka JavaScript Set.
+   * Set use karne ke fayde:
+   *   - Duplicate roll numbers allow nahi hote.
+   *   - has() method se O(1) instant checking hoti hai.
+   *   - Add aur delete fast perform hota hai.
    */
   const [selectedStudents, setSelectedStudents] = useState(new Set());
 
-  /** submitting: true hone par "Assign Test Now" button disabled ho jata hai */
+  /** submitting: API call chalte waqt 'Assign Test Now' button ko disable karne ke liye */
   const [submitting, setSubmitting] = useState(false);
 
-  /** mobileTab: Mobile mein kaunsa panel active hai - 'students' (default) ya 'schedule' */
+  /** mobileTab: Mobile view par kaunsa section dikhana hai - 'students' ya 'schedule' */
   const [mobileTab, setMobileTab] = useState('students');
 
   /**
-   * config: Test assignment configuration object.
-   * Fields:
-   *   - mode: Online ya Offline delivery
-   *   - startDate: Test shuru hone ki tarikh
-   *   - startTime: Test shuru hone ka waqt
-   *   - expiryDate: Test band hone ki tarikh (auto-lock)
-   *   - expiryTime: Test band hone ka waqt
+   * config: Test assignment ke schedule aur delivery mode settings ka object:
+   *   - mode: Online (Web Browser) ya Offline (Paper based)
+   *   - startDate: Test shuru hone ki date (YYYY-MM-DD)
+   *   - startTime: Test shuru hone ka time (HH:MM)
+   *   - expiryDate: Test band/auto-lock hone ki date (YYYY-MM-DD)
+   *   - expiryTime: Test band hone ka time (HH:MM)
    */
   const [config, setConfig] = useState({
-    mode: 'Online (Web Browser)',  // Default mode: Online
-    startDate: '',                 // Format: YYYY-MM-DD (HTML date input)
-    startTime: '',                 // Format: HH:MM (HTML time input)
-    expiryDate: '',                // Format: YYYY-MM-DD
-    expiryTime: ''                 // Format: HH:MM
+    mode: 'Online (Web Browser)',
+    startDate: '',
+    startTime: '',
+    expiryDate: '',
+    expiryTime: ''
   });
 
   // ─────────────────────────────────────────────
-  // LIFECYCLE - Component Mount hone par
+  // 2. LIFECYCLE HOOKS (Page Load par Data Fetching)
   // ─────────────────────────────────────────────
 
   /**
-   * useEffect: Modal open hone par sare students fetch karta hai.
-   * [] dependency = sirf ek baar chalega (mount par)
+   * useEffect: Modal khulte hi ek baar chalega aur database se:
+   *   1. Saare Students fetch karega
+   *   2. Saare Master Departments fetch karega
    */
-  const [masterDepts, setMasterDepts] = useState(['BCA', 'BBA', 'BCOM', 'BSC', 'MCA']);
-
   useEffect(() => {
     fetchStudents();
     fetchDepartments();
   }, []);
 
+  /**
+   * fetchDepartments: Backend API (/api/admin/departments) se dynamic department list lata hai.
+   */
   const fetchDepartments = async () => {
     try {
-      const res = await fetch('/api/admin/departments', { headers: { Accept: 'application/json' } });
+      const res = await fetch('/api/admin/departments', { 
+        headers: { Accept: 'application/json' } 
+      });
       const data = await res.json();
       if (data.success && data.departments && data.departments.length > 0) {
         setMasterDepts(data.departments);
@@ -121,6 +143,9 @@ export default function AssignTestModal({ test, onClose, onAssignSuccess }) {
     }
   };
 
+  /**
+   * fetchStudents: Backend API (/api/admin/students) se sabhi registered students ki list lata hai.
+   */
   const fetchStudents = async () => {
     try {
       const res = await fetch('/api/admin/students', {
@@ -136,145 +161,76 @@ export default function AssignTestModal({ test, onClose, onAssignSuccess }) {
     setLoading(false);
   };
 
-
   // ─────────────────────────────────────────────
-  // COMPUTED / DERIVED VALUES
+  // 3. FILTERING & SEARCH LOGIC (Computed Values)
   // ─────────────────────────────────────────────
 
   /**
-   * filteredStudents: Active filter aur search query ke hisab se filtered students.
-   * Do conditions dono satisfy honi chahiye (AND logic):
-   *   1. matchDept: Department filter se match kare
-   *   2. matchSearch: Name ya roll_no ki beginning se search query match kare (startsWith)
-   *
-   * Note: String() conversion isliye ki kuch fields null/undefined ho sakti hain
+   * filteredStudents: Selected Department aur Search Query ke hisaab se live filtered students list.
+   * Logic:
+   *   - Department match: Agar 'All' hai ya student ka department match karta ho.
+   *   - Search match: Student name ya roll number me search query match karti ho.
    */
   const filteredStudents = students.filter(s => {
-    // Department match check (case-insensitive)
     const matchDept = filterDept === 'All' || (s.department && s.department.toUpperCase() === filterDept.toUpperCase());
     
-    // String conversion + lowercase (null-safe)
     const nameStr = s.name ? String(s.name).toLowerCase() : '';
     const rollStr = s.roll_no ? String(s.roll_no).toLowerCase() : '';
     const searchStr = searchQuery ? String(searchQuery).toLowerCase() : '';
     
-    // includes: "Rashid" ya "450" likhne par match hoga (flexible search)
     const matchSearch = nameStr.includes(searchStr) || rollStr.includes(searchStr);
     
     return matchDept && matchSearch;
   });
 
   /**
-   * isAllSelected: Check karta hai ki kya sare visible (filtered) students selected hain.
-   * "Select All" checkbox ke state ke liye use hota hai:
-   *   - true  → checkbox checked dikhega
-   *   - false → checkbox unchecked ya indeterminate
+   * isAllSelected: Check karta hai ki kya screen par dikh rahe saare filtered students select ho chuke hain.
+   * "SELECT ALL VISIBLE STUDENTS" checkbox ko auto-check/uncheck karne ke liye use hota hai.
    */
   const isAllSelected = filteredStudents.length > 0 && filteredStudents.every(s => selectedStudents.has(s.roll_no));
 
   // ─────────────────────────────────────────────
-  // EVENT HANDLERS
+  // 4. EVENT HANDLERS (User Actions)
   // ─────────────────────────────────────────────
 
   /**
-   * toggleSelectAll: "SELECT ALL VISIBLE STUDENTS" checkbox click hone par chalta hai.
-   * - Agar sab selected hain → sab deselect karo (remove from Set)
-   * - Agar koi bhi unselected hai → sab select karo (add to Set)
-   *
-   * Note: new Set(selectedStudents) se copy banate hain kyunki Set mutable hai
-   * aur React state directly mutate nahi karni chahiye.
+   * toggleSelectAll: "SELECT ALL VISIBLE STUDENTS" checkbox par click hone par chalega.
+   * - Agar pehle se sabhi visible students select hain -> Sabhi ko Deselect karega.
+   * - Agar kuch ya koi select nahi hai -> Sabhi visible students ko ek sath Select karega.
    */
   const toggleSelectAll = () => {
-    const newSelected = new Set(selectedStudents); // Existing Set ki copy banao
+    const newSelected = new Set(selectedStudents);
     if (isAllSelected) {
-      // Sab selected hain → sab visible students ko deselect karo
       filteredStudents.forEach(s => newSelected.delete(s.roll_no));
     } else {
-      // Kuch unselected hain → sab visible students ko select karo
       filteredStudents.forEach(s => newSelected.add(s.roll_no));
-    }
-    setSelectedStudents(newSelected); // Updated Set state mein set karo
-  };
-
-  /**
-   * toggleStudent: Individual student ke checkbox click hone par chalta hai.
-   * - Agar already selected hai → deselect karo
-   * - Agar selected nahi hai → select karo
-   *
-   * @param {string} roll_no - Toggle hone wale student ka roll number
-   */
-  const toggleStudent = (roll_no) => {
-    const newSelected = new Set(selectedStudents); // Existing Set ki copy
-    if (newSelected.has(roll_no)) {
-      newSelected.delete(roll_no); // Already selected → remove karo
-    } else {
-      newSelected.add(roll_no);    // Not selected → add karo
     }
     setSelectedStudents(newSelected);
   };
 
   /**
-   * handleAssign: "Assign Test Now" button click hone par chalta hai.
-   * Validation karta hai pehle:
-   *   - Kam se kam ek student select hona chahiye
-   *   - Start date/time aur Expiry date/time dono fill hone chahiye
-   * Phir backend API ko POST request bhejta hai:
-   *   - test_id: Kaunsa test assign ho raha hai
-   *   - roll_nos: Kaunse students ko (Array format)
-   *   - config: Schedule aur mode configuration
+   * toggleStudent: Kisi single student ke checkbox click hone par chalega.
+   * @param {string} roll_no - Student ka roll number
    */
-  const handleAssign = async () => {
-    // Validation 1: Koi student select nahi hai
-    if (selectedStudents.size === 0) return;
-    
-    // Validation 2: Schedule dates/times fill nahi hain
-    if (!config.startDate || !config.startTime || !config.expiryDate || !config.expiryTime) {
-      toast.error("Please configure the complete start and expiry schedule before assigning the test.");
-      return;
+  const toggleStudent = (roll_no) => {
+    const newSelected = new Set(selectedStudents);
+    if (newSelected.has(roll_no)) {
+      newSelected.delete(roll_no); // Agar pehle se checked hai toh hata do
+    } else {
+      newSelected.add(roll_no);    // Agar checked nahi hai toh add karo
     }
-
-    // Validation 3: Check if test has either PDF uploaded OR questions added
-    const hasPdf = !!localTest.question_pdf;
-    const hasQuestions = localTest.actual_questions_count > 0;
-    if (!hasPdf && !hasQuestions) {
-      toast.error("You must either upload a PDF or add options-based questions before assigning this test.");
-      return;
-    }
-    
-    setSubmitting(true); // Button disable karo (double submit roko)
-    
-    try {
-      const res = await fetch('/api/admin/assign', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          test_id: test.id,                        // Kaunsa test
-          roll_nos: Array.from(selectedStudents),   // Set ko Array mein convert karo (JSON serializable nahi hai Set)
-          config                                    // Schedule + mode config
-        })
-      });
-      const data = await res.json();
-      if (data.success) {
-        toast.success(data.message || `Test assigned to ${selectedStudents.size} student(s) successfully!`);
-        onAssignSuccess(); // Parent AdminDashboard ko refresh karo
-        onClose();         // Modal band karo
-      } else {
-        toast.error(data.message || 'Assignment failed');
-      }
-    } catch (err) {
-      console.error('Assignment error', err);
-      toast.error('Unable to assign test.');
-    }
-    setSubmitting(false); // Button wapas enable karo
+    setSelectedStudents(newSelected);
   };
 
+  /**
+   * handleUploadPdf: Test ke liye question paper PDF upload karne ka handler.
+   * File type validate karke FormData ke zariye /api/admin/tests/{id}/upload-pdf par POST karta hai.
+   */
   const handleUploadPdf = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
+    // Sirf PDF file allow karna
     if (file.type !== 'application/pdf') {
       toast.error('Only PDF files are allowed.');
       return;
@@ -295,6 +251,7 @@ export default function AssignTestModal({ test, onClose, onAssignSuccess }) {
       const data = await res.json();
       if (data.success) {
         toast.success(data.message);
+        // Local state me PDF path update karo taaki UI turant update ho sake
         setLocalTest({ ...localTest, question_pdf: data.question_pdf });
       } else {
         toast.error(data.message || 'PDF upload failed.');
@@ -306,9 +263,67 @@ export default function AssignTestModal({ test, onClose, onAssignSuccess }) {
   };
 
   /**
-   * getDeptCounts: Har department ke kitne students hain yeh count karta hai.
-   * Filter tabs par "(5)" jaise numbers dikhane ke liye use hota hai.
-   * @returns {Object} { All: n, BCA: n, BBA: n, BCom: n }
+   * handleAssign: "Assign Test Now" button click hone par final assignment perform karta hai.
+   * 
+   * Strict Validations:
+   *   1. Kam se kam 1 student select hona chahiye.
+   *   2. Start Date/Time aur Expiry Date/Time dono configure honi chahiye.
+   *   3. Test me ya toh PDF uploaded ho YA kam se kam 1 MCQ question add kiya gaya ho.
+   * 
+   * POST Request: /api/admin/assign
+   */
+  const handleAssign = async () => {
+    // Validation 1: Student selection check
+    if (selectedStudents.size === 0) return;
+    
+    // Validation 2: Complete Schedule check
+    if (!config.startDate || !config.startTime || !config.expiryDate || !config.expiryTime) {
+      toast.error("Please configure the complete start and expiry schedule before assigning the test.");
+      return;
+    }
+
+    // Validation 3: Test Content check (PDF ya MCQs hona mandatory hai)
+    const hasPdf = !!localTest.question_pdf;
+    const hasQuestions = localTest.actual_questions_count > 0;
+    if (!hasPdf && !hasQuestions) {
+      toast.error("You must either upload a PDF or add options-based questions before assigning this test.");
+      return;
+    }
+    
+    setSubmitting(true); // Double submit rokne ke liye button disable karo
+    
+    try {
+      const res = await fetch('/api/admin/assign', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+          test_id: test.id,
+          roll_nos: Array.from(selectedStudents), // Set ko JSON array me badla
+          config
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message || `Test assigned to ${selectedStudents.size} student(s) successfully!`);
+        onAssignSuccess(); // Parent dashboard refresh karo
+        onClose();         // Modal band karo
+      } else {
+        toast.error(data.message || 'Assignment failed');
+      }
+    } catch (err) {
+      console.error('Assignment error', err);
+      toast.error('Unable to assign test.');
+    }
+    setSubmitting(false);
+  };
+
+  /**
+   * getDeptCounts: Har department me kitne students hain unki count nikalta hai.
+   * Isse department filter tabs par "Year 10 (12)" jaisa badge count dikhta hai.
+   * @returns {Object} Example: { All: 50, 'YEAR 10': 12, ... }
    */
   const getDeptCounts = () => {
     const counts = { All: students.length };
@@ -326,40 +341,36 @@ export default function AssignTestModal({ test, onClose, onAssignSuccess }) {
     return counts;
   };
   
-  /** counts: getDeptCounts() ka result (department-wise student counts) */
   const counts = getDeptCounts();
 
-
   // ─────────────────────────────────────────────
-  // JSX RENDER
+  // 5. JSX RENDERING (UI Structure)
   // ─────────────────────────────────────────────
 
   return (
-    // Modal background overlay
+    // Background Overlay
     <div className={styles['assign-modal-overlay']}>
       
-      {/* Main modal container */}
+      {/* Main Modal Container */}
       <div className={styles['assign-modal-container']}>
         
-        {/* ── Header ── */}
+        {/* ── Section A: Modal Header ── */}
         <div className={styles['assign-modal-header']}>
           <div className={styles['header-left-content']}>
-            {/* Title: CheckSquare icon + "Assign Test:" + test code */}
             <div className={styles['header-title-row']}>
               <CheckSquare size={20} />
               <h2>Assign Test:</h2>
               <span className={styles['header-test-code']}>{test.code}</span>
             </div>
-            {/* Subtitle: Test ka full naam */}
             <p className={styles['header-subtitle']}>{test.name} — Select students to assign</p>
           </div>
-          {/* X button: Modal band karo */}
-          <button className={styles['modal-close-btn']} onClick={onClose}>
+          {/* Close (X) Button */}
+          <button className={styles['modal-close-btn']} onClick={onClose} title="Close Modal">
             <X size={20} />
           </button>
         </div>
 
-        {/* ── Mobile Tab Switcher (shown only on mobile via CSS) ── */}
+        {/* ── Section B: Mobile Tab Switcher (Visible on Mobile Only) ── */}
         <div className={styles['mobile-tab-bar']}>
           <button
             className={`${styles['mobile-tab-btn']} ${mobileTab === 'students' ? styles['mobile-tab-active'] : ''}`}
@@ -375,15 +386,15 @@ export default function AssignTestModal({ test, onClose, onAssignSuccess }) {
           </button>
         </div>
 
-        {/* ── Body: Do panels side by side ── */}
+        {/* ── Section C: Dual Panel Body (Left: Schedule/Content, Right: Students) ── */}
         <div className={styles['assign-modal-body']}>
           
-          {/* ════════════════════════════════════════
-              LEFT PANEL: Schedule & Mode Configuration
-              ════════════════════════════════════════ */}
+          {/* ═══════════════════════════════════════════════
+              LEFT PANEL: Test Configuration & Timings
+              ═══════════════════════════════════════════════ */}
           <div className={`${styles['assign-panel-left']} ${mobileTab === 'schedule' ? styles['mobile-active'] : ''}`}>
             
-            {/* Panel Header */}
+            {/* Panel Title */}
             <div className={styles['panel-header-section']}>
               <div className={styles['panel-icon']}><Clock size={24} /></div>
               <div className={styles['panel-title']}>
@@ -392,36 +403,41 @@ export default function AssignTestModal({ test, onClose, onAssignSuccess }) {
               </div>
             </div>
 
-            {/* Config Box 1: Delivery Mode (Online/Offline) */}
+            {/* Block 1: Delivery Mode (Online vs Offline) */}
             <div className={styles['config-box']}>
               <div className={styles['box-title']}><Zap size={14} /> DELIVERY MODE</div>
-              {/* Select dropdown: Mode change karne par config.mode update hota hai */}
               <select value={config.mode} onChange={e => setConfig({...config, mode: e.target.value})}>
                 <option value="Online (Web Browser)">Online (Web Browser)</option>
                 <option value="Offline (Paper based)">Offline (Paper based)</option>
               </select>
             </div>
 
-            {/* Config Box 1.5: Test Content (Questions & PDF) */}
+            {/* Block 2: Test Content Status & Actions (PDF Upload / MCQ Management) */}
             <div className={`${styles['config-box']} ${styles['green-box']}`}>
               <div className={styles['box-title']}><FileText size={14} /> TEST CONTENT</div>
               <p style={{ fontSize: '0.8rem', color: '#475569', margin: '0 0 0.5rem 0' }}>
                 You must configure questions or upload a PDF paper before assigning.
               </p>
               
+              {/* Badges: PDF Status & MCQ Count */}
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
                 {localTest.question_pdf ? (
-                  <span className={`${styles['test-status-badge']} ${styles['status-ok']}`}><CheckCircle size={10} style={{marginRight: '2px'}}/> PDF Uploaded</span>
+                  <span className={`${styles['test-status-badge']} ${styles['status-ok']}`}>
+                    <CheckCircle size={10} style={{marginRight: '2px'}}/> PDF Uploaded
+                  </span>
                 ) : (
                   <span className={`${styles['test-status-badge']} ${styles['status-error']}`}>No PDF</span>
                 )}
                 {localTest.actual_questions_count > 0 ? (
-                  <span className={`${styles['test-status-badge']} ${styles['status-ok']}`}><CheckCircle size={10} style={{marginRight: '2px'}}/> {localTest.actual_questions_count} MCQs</span>
+                  <span className={`${styles['test-status-badge']} ${styles['status-ok']}`}>
+                    <CheckCircle size={10} style={{marginRight: '2px'}}/> {localTest.actual_questions_count} MCQs
+                  </span>
                 ) : (
                   <span className={`${styles['test-status-badge']} ${styles['status-error']}`}>0 MCQs</span>
                 )}
               </div>
 
+              {/* Action Buttons: Upload PDF / Add MCQs */}
               <div className={styles['content-buttons-row']}>
                 <label className={styles['upload-pdf-btn']}>
                   <input 
@@ -437,13 +453,14 @@ export default function AssignTestModal({ test, onClose, onAssignSuccess }) {
                 <button 
                   className={styles['manage-questions-btn']}
                   onClick={() => setShowManageQuestions(true)}
+                  type="button"
                 >
                   <Settings size={14} /> Add MCQs
                 </button>
               </div>
             </div>
 
-            {/* Config Box 2: Live Start Window (Start Date + Time) */}
+            {/* Block 3: Live Start Window (DatePicker + Time Select) */}
             <div className={`${styles['config-box']} ${styles['blue-box']}`}>
               <div className={styles['box-title']}><Calendar size={14} /> LIVE START WINDOW</div>
               <div className={styles['datetime-row']} style={{ display: 'block' }}>
@@ -453,7 +470,11 @@ export default function AssignTestModal({ test, onClose, onAssignSuccess }) {
                     selected={config.startDate && config.startTime ? new Date(`${config.startDate}T${config.startTime}`) : null}
                     onChange={date => {
                       if (date) {
-                        setConfig({...config, startDate: format(date, 'yyyy-MM-dd'), startTime: format(date, 'HH:mm')});
+                        setConfig({
+                          ...config, 
+                          startDate: format(date, 'yyyy-MM-dd'), 
+                          startTime: format(date, 'HH:mm')
+                        });
                       } else {
                         setConfig({...config, startDate: '', startTime: ''});
                       }
@@ -469,7 +490,7 @@ export default function AssignTestModal({ test, onClose, onAssignSuccess }) {
               </div>
             </div>
 
-            {/* Config Box 3: Expiry / Auto-Lock (Expiry Date + Time) */}
+            {/* Block 4: Expiry / Auto-Lock Window (DatePicker + Time Select) */}
             <div className={`${styles['config-box']} ${styles['orange-box']}`}>
               <div className={styles['box-title']}><Clock size={14} /> EXPIRY / AUTO-LOCK</div>
               <div className={styles['datetime-row']} style={{ display: 'block' }}>
@@ -479,7 +500,11 @@ export default function AssignTestModal({ test, onClose, onAssignSuccess }) {
                     selected={config.expiryDate && config.expiryTime ? new Date(`${config.expiryDate}T${config.expiryTime}`) : null}
                     onChange={date => {
                       if (date) {
-                        setConfig({...config, expiryDate: format(date, 'yyyy-MM-dd'), expiryTime: format(date, 'HH:mm')});
+                        setConfig({
+                          ...config, 
+                          expiryDate: format(date, 'yyyy-MM-dd'), 
+                          expiryTime: format(date, 'HH:mm')
+                        });
                       } else {
                         setConfig({...config, expiryDate: '', expiryTime: ''});
                       }
@@ -496,94 +521,88 @@ export default function AssignTestModal({ test, onClose, onAssignSuccess }) {
             </div>
           </div>
 
-          {/* ════════════════════════════════════════
-              RIGHT PANEL: Students Filter + List
-              ════════════════════════════════════════ */}
+          {/* ═══════════════════════════════════════════════
+              RIGHT PANEL: Students Filter & Selection List
+              ═══════════════════════════════════════════════ */}
           <div className={`${styles['assign-panel-right']} ${mobileTab === 'students' ? styles['mobile-active'] : ''}`}>
             
-            {/* Filter Header label */}
+            {/* Department Filter Label */}
             <div className={styles['filter-header']}>
               <GraduationCap size={16} /> FILTER STUDENTS BY DEPARTMENT
             </div>
             
+            {/* Dynamic Department Filter Tabs */}
             <div className={styles['filter-tabs']}>
               {['All', ...masterDepts].map(dept => (
                 <button 
                   key={dept}
                   className={`${styles['filter-tab']} ${filterDept === dept ? styles['active'] : ''}`}
                   onClick={() => setFilterDept(dept)}
+                  type="button"
                 >
                   {dept} ({counts[dept.toUpperCase()] !== undefined ? counts[dept.toUpperCase()] : (counts[dept] || 0)})
                 </button>
               ))}
             </div>
 
-
-            {/* Select All Row + Search Input */}
+            {/* Select All & Search Row */}
             <div className={styles['select-all-row']}>
               
-              {/* "Select All Visible Students" checkbox */}
+              {/* Select All Checkbox */}
               <label className={styles['select-all-label']}>
                 <input 
                   type="checkbox" 
-                  checked={isAllSelected}     // Sab selected hain? (computed value)
-                  onChange={toggleSelectAll}  // Toggle all visible students
+                  checked={isAllSelected}
+                  onChange={toggleSelectAll}
                 />
                 SELECT ALL VISIBLE STUDENTS
               </label>
               
-              {/* Search Input with magnifier icon */}
+              {/* Search Bar Input */}
               <div className={styles['search-input-wrapper']}>
                 <Search className={styles['search-icon']} size={14} />
                 <input 
                   type="text" 
                   placeholder="Search student name, roll..."
                   value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)} // Har keystroke par filter update
+                  onChange={e => setSearchQuery(e.target.value)}
                 />
               </div>
             </div>
 
-            {/* ── Students Checkable List ── */}
+            {/* Checkable Students List */}
             <div className={styles['student-list']}>
               {loading ? (
-                /* Loading state */
                 <div style={{textAlign: 'center', padding: '2rem', color: '#64748b'}}>Loading students...</div>
               ) : filteredStudents.length === 0 ? (
-                /* Empty state: No results */
                 <div style={{textAlign: 'center', padding: '2rem', color: '#64748b'}}>No students found matching your criteria.</div>
               ) : (
-                /* 
-                  Students list: har student ek clickable label hai (checkbox ke sath).
-                  label element isliye use kiya kyunki checkbox aur label ko sath click kar sakte hain.
-                */
                 filteredStudents.map(student => (
                   <label 
                     key={student.roll_no} 
-                    // Selected student ko highlighted 'selected' class milti hai
                     className={`${styles['student-item']} ${selectedStudents.has(student.roll_no) ? styles['selected'] : ''}`}
                   >
-                    {/* Checkbox: Is student ka roll_no Set mein hai? → checked */}
+                    {/* Individual Student Checkbox */}
                     <input 
                       type="checkbox" 
                       checked={selectedStudents.has(student.roll_no)}
-                      onChange={() => toggleStudent(student.roll_no)} // Toggle is student
+                      onChange={() => toggleStudent(student.roll_no)}
                     />
                     
-                    {/* Student Avatar: Naam ka capital first letter */}
+                    {/* Avatar Letter */}
                     <div className={styles['student-avatar']}>
-                      {student.name.charAt(0).toUpperCase()}
+                      {student.name ? student.name.charAt(0).toUpperCase() : 'S'}
                     </div>
                     
-                    {/* Student Info: Naam + Roll + Email */}
+                    {/* Student Info */}
                     <div className={styles['student-info']}>
                       <h4 className={styles['student-name']}>{student.name}</h4>
                       <p className={styles['student-meta']}>Roll: {student.roll_no} • {student.email}</p>
                     </div>
                     
-                    {/* Department Badge: BCA/BBA/BCom */}
-                    <span className={`${styles['dept-badge']} ${styles[student.department.toLowerCase()] || ''}`}>
-                      {student.department.toUpperCase()}
+                    {/* Department Badge */}
+                    <span className={`${styles['dept-badge']} ${styles[student.department?.toLowerCase()] || ''}`}>
+                      {student.department?.toUpperCase()}
                     </span>
                   </label>
                 ))
@@ -592,28 +611,25 @@ export default function AssignTestModal({ test, onClose, onAssignSuccess }) {
           </div>
         </div>
 
-        {/* ── Footer ── */}
+        {/* ── Section D: Modal Footer ── */}
         <div className={styles['assign-modal-footer']}>
           
-          {/* Kitne students selected hain - live count */}
+          {/* Live Selected Students Counter */}
           <div className={styles['selection-count']}>
             <User size={16} /> {selectedStudents.size} student(s) selected
           </div>
           
-          {/* Action Buttons */}
+          {/* Footer Action Buttons */}
           <div className={styles['footer-actions']}>
-            {/* Cancel: Modal band karo bina assign kiye */}
-            <button className={styles['cancel-btn']} onClick={onClose}>Cancel</button>
+            <button className={styles['cancel-btn']} onClick={onClose} type="button">
+              Cancel
+            </button>
             
-            {/* 
-              Assign Test Now:
-              - submitting=true ya koi student select nahi → disabled
-              - Text dynamically change hota hai ("Assign Test Now" ↔ "Assigning...")
-            */}
             <button 
               className={styles['confirm-btn']} 
               onClick={handleAssign}
               disabled={submitting || selectedStudents.size === 0}
+              type="button"
             >
               {submitting ? 'Assigning...' : 'Assign Test Now'} <ArrowRight size={16} />
             </button>
@@ -621,12 +637,13 @@ export default function AssignTestModal({ test, onClose, onAssignSuccess }) {
         </div>
       </div>
 
+      {/* ── Manage Questions Modal Sub-Popup ── */}
       {showManageQuestions && (
         <ManageQuestionsModal 
           test={localTest}
           onClose={() => setShowManageQuestions(false)}
           onUpdate={(newCount) => {
-            // Update the localTest question count so the badge updates immediately
+            // Local state me question count update karo taaki badge par number refresh ho jaye
             setLocalTest(prev => ({
               ...prev,
               actual_questions_count: newCount

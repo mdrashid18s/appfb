@@ -417,3 +417,168 @@
   font-weight: 700;
   cursor: pointer;
 }
+
+.viewProfileBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.viewProfileBtn:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  transform: translateY(-1px);
+}
+
+.profileModalContent {
+  background: #fff;
+  width: 100%;
+  max-width: 680px;
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: 20px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  animation: popIn 0.2s ease-out;
+}
+
+.profileHeaderCover {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+  padding: 24px 28px;
+  color: #fff;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+}
+
+.profileCoverInfo {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.profileCoverAvatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid rgba(255, 255, 255, 0.2);
+}
+
+.profileCoverText h2 {
+  margin: 0 0 4px 0;
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.profileCoverBadgeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.profileCoverBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.profileCloseBtn {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #fff;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.profileCloseBtn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.profileModalBody {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.profileSectionTitle {
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #64748b;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.profileDetailsGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.profileDetailCard {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 12px 14px;
+  border-radius: 12px;
+}
+
+.profileDetailCardFull {
+  grid-column: span 2;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 12px 14px;
+  border-radius: 12px;
+}
+
+.profileFieldLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #94a3b8;
+  letter-spacing: 0.04em;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.profileFieldValue {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+

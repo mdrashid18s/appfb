@@ -80,23 +80,18 @@ class AuthController extends Controller
         $subject = 'Your Login OTP';
         $message = "Your Login OTP is: {$otp}\r\nIt will expire in {$expiryMinutes} minutes. Please do not share it with anyone.";
 
-        
-        // Defer sending email so the API responds instantly
-        defer(function () use ($message, $request, $subject) {
-            try {
-                \Illuminate\Support\Facades\Mail::raw($message, function ($mail) use ($request, $subject) {
-                    $mail->to($request->email)
-                         ->subject($subject);
-                });
-            } catch (\Exception $e) {
-                \Illuminate\Support\Facades\Log::error('Failed to send OTP via email. ' . $e->getMessage());
-            }
-        });
+        try {
+            \Illuminate\Support\Facades\Mail::raw($message, function ($mail) use ($request, $subject) {
+                $mail->to($request->email)
+                     ->subject($subject);
+            });
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to send OTP via email. ' . $e->getMessage());
+        }
 
         return response()->json([
             'success' => true,
-            'message' => 'OTP sent to your email (via SMTP).',
-            'mock_otp' => $otp // Keeping this so you can still test if mail() fails
+            'message' => 'OTP sent successfully to your email.'
         ]);
     }
 
@@ -161,7 +156,57 @@ class AuthController extends Controller
 
         $studentData = null;
         if ($user->role === 'student' && $user->student_id) {
-            $studentData = Student::find($user->student_id);
+            $studentData = Student::with(['course', 'centre.location'])->find($user->student_id);
+
+            // Sync with student_registrations table if available to guarantee exact profile details
+            $reg = \App\Models\StudentRegistration::where('primary_email', $request->email)->latest()->first();
+            if ($reg && $studentData) {
+                $syncFields = [];
+                if (empty($studentData->name) || $studentData->name === 'New Student') {
+                    $syncFields['name'] = trim($reg->first_name . ' ' . $reg->surname);
+                }
+                if (empty($studentData->dob) && $reg->dob) {
+                    $syncFields['dob'] = date('Y-m-d', strtotime($reg->dob));
+                }
+                if (empty($studentData->current_school) && $reg->current_school) {
+                    $syncFields['current_school'] = $reg->current_school;
+                }
+                if (empty($studentData->parent_name) && ($reg->parent_first_name || $reg->parent_surname)) {
+                    $syncFields['parent_name'] = trim($reg->parent_first_name . ' ' . $reg->parent_surname);
+                }
+                if (empty($studentData->course_id) && $reg->course_id) {
+                    $syncFields['course_id'] = $reg->course_id;
+                }
+                if (empty($studentData->centre_id) && $reg->centre_id) {
+                    $syncFields['centre_id'] = $reg->centre_id;
+                }
+                if (empty($studentData->preferred_day) && $reg->preferred_day) {
+                    $syncFields['preferred_day'] = $reg->preferred_day;
+                }
+                if (empty($studentData->preferred_session) && $reg->preferred_session) {
+                    $syncFields['preferred_session'] = $reg->preferred_session;
+                }
+                if (empty($studentData->target_school) && $reg->target_school) {
+                    $syncFields['target_school'] = $reg->target_school;
+                }
+                if (empty($studentData->writing_addon) && $reg->writing_addon) {
+                    $syncFields['writing_addon'] = $reg->writing_addon;
+                }
+                if (empty($studentData->adress) && $reg->address) {
+                    $syncFields['adress'] = $reg->address;
+                }
+                if (empty($studentData->{'phone no'}) && $reg->mobile) {
+                    $syncFields['phone no'] = $reg->mobile;
+                }
+                if (empty($studentData->secondary_email) && $reg->secondary_email) {
+                    $syncFields['secondary_email'] = $reg->secondary_email;
+                }
+
+                if (!empty($syncFields)) {
+                    $studentData->update($syncFields);
+                    $studentData = $studentData->fresh(['course', 'centre.location']);
+                }
+            }
         }
 
         // Delete OTP after use
@@ -175,6 +220,71 @@ class AuthController extends Controller
             'user' => $user,
             'student' => $studentData,
             'is_new_user' => $isNewUser
+        ]);
+    }
+
+    /**
+     * GET /api/student/{id}/profile
+     * Fetch complete student profile with course and tuition centre relations
+     */
+    public function getStudentProfile($id)
+    {
+        $student = Student::with(['course', 'centre.location'])->find($id);
+        if (!$student) {
+            return response()->json(['success' => false, 'message' => 'Student not found'], 404);
+        }
+
+        // Sync with registration if fields are missing
+        if ($student->{'email adress'}) {
+            $reg = \App\Models\StudentRegistration::where('primary_email', $student->{'email adress'})->latest()->first();
+            if ($reg) {
+                $syncFields = [];
+                if (empty($student->name) || $student->name === 'New Student') {
+                    $syncFields['name'] = trim($reg->first_name . ' ' . $reg->surname);
+                }
+                if (empty($student->dob) && $reg->dob) {
+                    $syncFields['dob'] = date('Y-m-d', strtotime($reg->dob));
+                }
+                if (empty($student->current_school) && $reg->current_school) {
+                    $syncFields['current_school'] = $reg->current_school;
+                }
+                if (empty($student->parent_name) && ($reg->parent_first_name || $reg->parent_surname)) {
+                    $syncFields['parent_name'] = trim($reg->parent_first_name . ' ' . $reg->parent_surname);
+                }
+                if (empty($student->course_id) && $reg->course_id) {
+                    $syncFields['course_id'] = $reg->course_id;
+                }
+                if (empty($student->centre_id) && $reg->centre_id) {
+                    $syncFields['centre_id'] = $reg->centre_id;
+                }
+                if (empty($student->preferred_day) && $reg->preferred_day) {
+                    $syncFields['preferred_day'] = $reg->preferred_day;
+                }
+                if (empty($student->preferred_session) && $reg->preferred_session) {
+                    $syncFields['preferred_session'] = $reg->preferred_session;
+                }
+                if (empty($student->target_school) && $reg->target_school) {
+                    $syncFields['target_school'] = $reg->target_school;
+                }
+                if (empty($student->writing_addon) && $reg->writing_addon) {
+                    $syncFields['writing_addon'] = $reg->writing_addon;
+                }
+                if (empty($student->adress) && $reg->address) {
+                    $syncFields['adress'] = $reg->address;
+                }
+                if (empty($student->{'phone no'}) && $reg->mobile) {
+                    $syncFields['phone no'] = $reg->mobile;
+                }
+                if (!empty($syncFields)) {
+                    $student->update($syncFields);
+                    $student = $student->fresh(['course', 'centre.location']);
+                }
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'student' => $student
         ]);
     }
 
@@ -260,23 +370,35 @@ class AuthController extends Controller
     public function updateProfile(Request $request, $id)
     {
         $request->validate([
-            'name' => 'nullable|string',
-            'roll_no' => 'nullable|numeric',
-            'department' => 'nullable|string',
-            'course_id' => 'nullable|numeric',
-            'email_adress' => 'nullable|email',
-            'phone_no' => 'nullable|numeric',
-            'dob' => 'nullable|date',
-            'adress' => 'nullable|string',
+            'name'             => 'nullable|string|max:150',
+            'roll_no'          => 'nullable|numeric',
+            'department'       => 'nullable|string',
+            'course_id'        => 'nullable|numeric',
+            'email_adress'     => 'nullable|email|max:255',
+            'secondary_email'  => 'nullable|email|max:255',
+            'phone_no'         => 'nullable|numeric',
+            'dob'              => 'nullable|date',
+            'gender'           => 'nullable|string|max:20',
+            'adress'           => 'nullable|string',
+            'parent_name'      => 'nullable|string|max:150',
+            'current_school'   => 'nullable|string|max:255',
+            'target_school'    => 'nullable|string|max:255',
+            'writing_addon'    => 'nullable|string|max:255',
         ]);
 
         $updateData = [];
         if ($request->has('name')) $updateData['name'] = $request->name;
         if ($request->has('roll_no')) $updateData['roll no'] = $request->roll_no;
         if ($request->has('email_adress')) $updateData['email adress'] = $request->email_adress;
+        if ($request->has('secondary_email')) $updateData['secondary_email'] = $request->secondary_email;
         if ($request->has('phone_no')) $updateData['phone no'] = $request->phone_no;
         if ($request->has('dob')) $updateData['dob'] = $request->dob;
+        if ($request->has('gender')) $updateData['gender'] = $request->gender;
         if ($request->has('adress')) $updateData['adress'] = $request->adress;
+        if ($request->has('parent_name')) $updateData['parent_name'] = $request->parent_name;
+        if ($request->has('current_school')) $updateData['current_school'] = $request->current_school;
+        if ($request->has('target_school')) $updateData['target_school'] = $request->target_school;
+        if ($request->has('writing_addon')) $updateData['writing_addon'] = $request->writing_addon;
 
         if ($request->has('course_id')) {
             $updateData['course_id'] = $request->course_id;
@@ -300,10 +422,7 @@ class AuthController extends Controller
                 ->update($updateData);
         }
 
-        $student = Student::with('course')->find($id);
-        if ($student) {
-            $student->department = $student->department;
-        }
+        $student = Student::with(['course', 'centre.location'])->find($id);
 
         return response()->json([
             'success' => true,

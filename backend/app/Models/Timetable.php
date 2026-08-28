@@ -26,4 +26,32 @@ class Timetable extends Model
     {
         return $this->belongsTo(Teacher::class, 'teacher_id', 'id');
     }
+
+    // ─── Query Scopes (MVC Pattern) ─────────────────────────────────────────────
+
+    /** Eager load course, subject, and teacher relations */
+    public function scopeWithDetails($query)
+    {
+        return $query->with(['course', 'subject', 'teacher']);
+    }
+
+    /** Filter by course ID */
+    public function scopeForCourse($query, ?int $courseId)
+    {
+        if (!$courseId) return $query;
+        return $query->where('course_id', $courseId);
+    }
+
+    /** Filter by day of week */
+    public function scopeForDay($query, ?string $day)
+    {
+        if (!$day) return $query;
+        return $query->where('day_of_week', $day);
+    }
+
+    /** Order timetable chronologically by day and time */
+    public function scopeSortedBySlot($query)
+    {
+        return $query->orderBy('day_of_week')->orderBy('start_time');
+    }
 }

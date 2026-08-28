@@ -1,6 +1,12 @@
 /**
  * @file NotificationBell.jsx
- * @description Real-time Notification Bell Dropdown component for Student & Admin dashboards.
+ * @description Real-time Notification Bell Dropdown Component.
+ *
+ * Features:
+ *   1. Live Unread Count Badge on Bell Icon.
+ *   2. Auto-polling / Real-time updates with smooth animations.
+ *   3. Dropdown Menu with notification items, categories, and direct action links.
+ *   4. Mark as Read and Mark All Read actions.
  */
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -14,8 +20,7 @@ import {
   Megaphone, 
   Award, 
   UserCheck, 
-  Clock,
-  X
+  Clock 
 } from 'lucide-react';
 import { formatDistanceToNow, parseISO } from 'date-fns';
 
@@ -23,39 +28,68 @@ export default function NotificationBell({ role = 'student', student, onSelectTa
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [loading, setLoading] = useState(false);
   const dropdownRef = useRef(null);
+  const isFetchingRef = useRef(false);
+  const lastFetchedRef = useRef(0);
   const navigate = useNavigate();
 
   const rollNo = student?.['roll no'] || student?.roll_no || student?.login_id || '';
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (force = false) => {
+    // Prevent duplicate in-flight requests
+    if (isFetchingRef.current) return;
+
+    // For student role, wait until rollNo is available
+    if (role === 'student' && !rollNo) return;
+
+    // Avoid fetching if document is hidden and not a forced fetch
+    if (!force && typeof document !== 'undefined' && document.hidden) return;
+
+    isFetchingRef.current = true;
     try {
       const token = localStorage.getItem('token');
       const params = new URLSearchParams({ role, roll_no: rollNo });
       const res = await fetch(`/api/notifications?${params.toString()}`, {
         headers: {
           'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         }
       });
       const data = await res.json();
       if (data.success) {
         setNotifications(data.notifications || []);
         setUnreadCount(data.unread_count || 0);
+        lastFetchedRef.current = Date.now();
       }
     } catch (err) {
       console.error('Failed to fetch notifications:', err);
+    } finally {
+      isFetchingRef.current = false;
     }
   };
 
+  // Initial fetch and 60-second background polling
   useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 15000); // Auto refresh every 15s
-    return () => clearInterval(interval);
+    fetchNotifications(true);
+
+    const interval = setInterval(() => {
+      fetchNotifications(false);
+    }, 60000); // 60 seconds smart polling
+
+    // Refresh when user returns to this browser tab
+    const handleVisibilityChange = () => {
+      if (!document.hidden && Date.now() - lastFetchedRef.current > 30000) {
+        fetchNotifications(true);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [role, rollNo]);
 
-  // Close dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -67,14 +101,14 @@ export default function NotificationBell({ role = 'student', student, onSelectTa
   }, []);
 
   const handleMarkAsRead = async (id, e) => {
-    e.stopPropagation();
+    if (e && e.stopPropagation) e.stopPropagation();
     try {
       const token = localStorage.getItem('token');
       await fetch(`/api/notifications/${id}/read`, {
         method: 'POST',
         headers: {
           'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         }
       });
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
@@ -92,7 +126,7 @@ export default function NotificationBell({ role = 'student', student, onSelectTa
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
-          'Authorization': `Bearer ${token}`
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({ role, roll_no: rollNo })
       });
@@ -114,6 +148,8 @@ export default function NotificationBell({ role = 'student', student, onSelectTa
         if (item.type === 'homework') onSelectTab('homework');
         else if (item.type === 'test') onSelectTab('tests');
         else if (item.type === 'notice') onSelectTab('notices');
+        else if (item.type === 'submission' || item.type === 'reportcard') onSelectTab('reportcard');
+        else navigate(item.link);
       } else {
         navigate(item.link);
       }
@@ -129,6 +165,7 @@ export default function NotificationBell({ role = 'student', student, onSelectTa
       case 'notice':
         return <div className={`${styles.iconWrap} ${styles.iconNotice}`}><Megaphone size={16} /></div>;
       case 'submission':
+      case 'reportcard':
         return <div className={`${styles.iconWrap} ${styles.iconSubmission}`}><Award size={16} /></div>;
       default:
         return <div className={`${styles.iconWrap} ${styles.iconSystem}`}><UserCheck size={16} /></div>;
@@ -137,10 +174,15 @@ export default function NotificationBell({ role = 'student', student, onSelectTa
 
   return (
     <div className={styles.bellContainer} ref={dropdownRef}>
+      {/* Bell Button with Unread Badge */}
       <button 
         className={`${styles.bellBtn} ${unreadCount > 0 ? styles.bellActive : ''}`}
-        onClick={() => setOpen(!open)}
+        onClick={() => {
+          if (!open) fetchNotifications(true);
+          setOpen(!open);
+        }}
         title="Notifications"
+        type="button"
       >
         <Bell size={19} />
         {unreadCount > 0 && (
@@ -148,8 +190,10 @@ export default function NotificationBell({ role = 'student', student, onSelectTa
         )}
       </button>
 
+      {/* Dropdown Popup Modal */}
       {open && (
         <div className={styles.dropdownModal}>
+          {/* Dropdown Header */}
           <div className={styles.dropdownHeader}>
             <div className={styles.headerTitle}>
               <Bell size={16} className={styles.headerBellIcon} />
@@ -158,13 +202,14 @@ export default function NotificationBell({ role = 'student', student, onSelectTa
             </div>
 
             {unreadCount > 0 && (
-              <button className={styles.markAllBtn} onClick={handleMarkAllRead} title="Mark all as read">
+              <button className={styles.markAllBtn} onClick={handleMarkAllRead} title="Mark all as read" type="button">
                 <CheckCheck size={14} />
                 <span>Mark all read</span>
               </button>
             )}
           </div>
 
+          {/* Notifications List Body */}
           <div className={styles.notificationsList}>
             {notifications.length === 0 ? (
               <div className={styles.emptyBox}>

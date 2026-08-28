@@ -55,12 +55,8 @@ Route::post('/login/request-otp', [\App\Http\Controllers\Api\AuthController::cla
  */
 Route::post('/login/verify-otp', [\App\Http\Controllers\Api\AuthController::class, 'verifyLoginOtp']);
 
-/**
- * POST /api/register-profile
- * Controller: AuthController@registerProfile
- * Purpose: Register a new student profile.
- */
 Route::post('/register-profile', [\App\Http\Controllers\Api\AuthController::class, 'registerProfile']);
+Route::get('/student/{id}/profile', [\App\Http\Controllers\Api\AuthController::class, 'getStudentProfile']);
 
 /**
  * POST /api/forgot-password/send-otp
@@ -91,6 +87,36 @@ Route::post('/forgot-password/reset', [\App\Http\Controllers\Api\AuthController:
 
 // Serve PDFs with CORS headers (Publicly accessible with long random filename)
 Route::get('/pdf/{path}', [\App\Http\Controllers\Api\AuthController::class, 'servePdf'])->where('path', '.*');
+
+// Public Registration & Location Endpoints
+Route::get('/locations', [\App\Http\Controllers\Api\RegistrationController::class, 'getLocationSlots']);
+Route::get('/centres', [\App\Http\Controllers\Api\RegistrationController::class, 'getCentres']);
+Route::post('/registrations/check-duplicate', [\App\Http\Controllers\Api\RegistrationController::class, 'checkDuplicate']);
+Route::post('/registrations/create-payment-order', [\App\Http\Controllers\Api\RegistrationController::class, 'createPaymentOrder']);
+Route::post('/registrations', [\App\Http\Controllers\Api\RegistrationController::class, 'submitRegistration']);
+
+// Product Store Public/Open Endpoints
+Route::get('/products', [\App\Http\Controllers\Api\ProductController::class, 'index']);
+Route::get('/products/{id}', [\App\Http\Controllers\Api\ProductController::class, 'show']);
+Route::post('/products/apply-coupon', [\App\Http\Controllers\Api\ProductController::class, 'applyCoupon']);
+Route::post('/products/checkout', [\App\Http\Controllers\Api\ProductController::class, 'checkout']);
+Route::get('/student/purchases', [\App\Http\Controllers\Api\ProductController::class, 'myPurchases']);
+Route::post('/products/exchange', [\App\Http\Controllers\Api\ProductController::class, 'exchangeProduct']);
+Route::get('/student/wallet', [\App\Http\Controllers\Api\ProductController::class, 'getStudentWallet']);
+Route::get('/products/exchange-targets/{studentProductId}', [\App\Http\Controllers\Api\ProductController::class, 'getExchangeTargets']);
+
+// Real Razorpay Payment Gateway Routes
+Route::post('/payment/create-razorpay-order', [\App\Http\Controllers\Api\ProductController::class, 'createRazorpayOrder']);
+Route::post('/payment/verify-razorpay', [\App\Http\Controllers\Api\ProductController::class, 'verifyRazorpayPayment']);
+Route::post('/payment/cancel-order', [\App\Http\Controllers\Api\ProductController::class, 'cancelOrder']);
+
+// Payment Gateway Webhooks (Razorpay Callbacks)
+Route::post('/webhooks/payment', [\App\Http\Controllers\Api\ProductController::class, 'handlePaymentWebhook']);
+Route::post('/webhooks/payment/simulate', [\App\Http\Controllers\Api\ProductController::class, 'simulatePaymentWebhook']);
+Route::get('/webhooks/logs', [\App\Http\Controllers\Api\ProductController::class, 'getWebhookLogs']);
+
+// Product Thumbnail Upload
+Route::post('/admin/products/upload-thumbnail', [\App\Http\Controllers\Api\ProductController::class, 'uploadThumbnail']);
 
 // ══════════════════════════════════════════════════════════════════════════════
 // PROTECTED ROUTES - Sanctum Auth Required
@@ -186,6 +212,15 @@ Route::post('/notifications/mark-all-read', [\App\Http\Controllers\Api\Notificat
 // (Currently unprotected - production mein admin middleware add karna chahiye)
 // ══════════════════════════════════════════════════════════════════════════════
 
+// ADMIN STORE MANAGEMENT ENDPOINTS
+Route::get('/admin/orders', [\App\Http\Controllers\Api\ProductController::class, 'adminOrders']);
+Route::post('/admin/orders/sync-pending', [\App\Http\Controllers\Api\ProductController::class, 'syncPendingOrders']);
+Route::post('/admin/orders/{id}/resend-invoice', [\App\Http\Controllers\Api\ProductController::class, 'resendInvoice']);
+Route::get('/admin/coupons', [\App\Http\Controllers\Api\ProductController::class, 'adminCoupons']);
+Route::post('/admin/products', [\App\Http\Controllers\Api\ProductController::class, 'storeProduct']);
+Route::post('/admin/products/{id}/update', [\App\Http\Controllers\Api\ProductController::class, 'updateProduct']);
+Route::delete('/admin/products/{id}', [\App\Http\Controllers\Api\ProductController::class, 'deleteProduct']);
+
 /**
  * GET /api/admin/tests
  * Controller: AdminController@getTests
@@ -226,8 +261,9 @@ Route::post('/admin/student-tests/{id}/grade', [\App\Http\Controllers\Api\AdminC
 Route::get('/admin/notices', [\App\Http\Controllers\Api\AdminController::class, 'getNotices']);
 Route::post('/admin/notices', [\App\Http\Controllers\Api\AdminController::class, 'storeNotice']);
 Route::delete('/admin/notices/{id}', [\App\Http\Controllers\Api\AdminController::class, 'deleteNotice']);
-Route::post('/admin/update-profile', [\App\Http\Controllers\Api\AdminController::class, 'updateProfile']);
 Route::post('/admin/update-password', [\App\Http\Controllers\Api\AdminController::class, 'updatePassword']);
+Route::post('/admin/forgot-password/request-otp', [\App\Http\Controllers\Api\AdminController::class, 'requestForgotPasswordOtp']);
+Route::post('/admin/forgot-password/reset', [\App\Http\Controllers\Api\AdminController::class, 'resetPasswordWithOtp']);
 
 /**
  * POST /api/admin/assign
@@ -342,27 +378,94 @@ Route::put('/admin/courses/{id}', [\App\Http\Controllers\Api\AdminController::cl
 Route::delete('/admin/courses/{id}', [\App\Http\Controllers\Api\AdminController::class, 'deleteCourse']);
 
 Route::get('/admin/subjects', [\App\Http\Controllers\Api\AdminController::class, 'getSubjects']);
+Route::post('/admin/subjects/assign-teacher', [\App\Http\Controllers\Api\AdminController::class, 'assignTeacherToSubject']);
+Route::post('/admin/subjects/unassign-teacher', [\App\Http\Controllers\Api\AdminController::class, 'unassignTeacherFromSubject']);
 Route::post('/admin/subjects', [\App\Http\Controllers\Api\AdminController::class, 'addSubject']);
 Route::put('/admin/subjects/{id}', [\App\Http\Controllers\Api\AdminController::class, 'updateSubject']);
 Route::delete('/admin/subjects/{id}', [\App\Http\Controllers\Api\AdminController::class, 'deleteSubject']);
 
 Route::get('/admin/teachers', [\App\Http\Controllers\Api\AdminController::class, 'getTeachers']);
+Route::post('/admin/teachers/assign-subjects', [\App\Http\Controllers\Api\AdminController::class, 'assignTeacherSubjects']);
 Route::post('/admin/teachers', [\App\Http\Controllers\Api\AdminController::class, 'addTeacher']);
 Route::put('/admin/teachers/{id}', [\App\Http\Controllers\Api\AdminController::class, 'updateTeacher']);
 Route::delete('/admin/teachers/{id}', [\App\Http\Controllers\Api\AdminController::class, 'deleteTeacher']);
-Route::post('/admin/subjects/assign-teacher', [\App\Http\Controllers\Api\AdminController::class, 'assignTeacherToSubject']);
-Route::post('/admin/subjects/unassign-teacher', [\App\Http\Controllers\Api\AdminController::class, 'unassignTeacherFromSubject']);
 Route::get('/admin/faculty-timetable/{teacherId}', [\App\Http\Controllers\Api\AdminController::class, 'getFacultyTimetable']);
 
 // ══════════════════════════════════════════════════════════════════════════════
-// WEEKLY HOMEWORK ROUTES
+// WEEKLY HOMEWORK & SUBMISSIONS ROUTES
 // ══════════════════════════════════════════════════════════════════════════════
 
+// Admin: Weekly homework create/update karna (Subjects, dates, PDF attachment)
 Route::post('/admin/homework/save-weekly', [\App\Http\Controllers\Api\HomeworkController::class, 'saveWeeklyHomework']);
+// Admin: Sabhi created weekly homework list fetch karna
 Route::get('/admin/homework', [\App\Http\Controllers\Api\HomeworkController::class, 'getAllWeeklyHomework']);
+// Admin: Specific week ka homework delete karna
 Route::delete('/admin/homework/weekly', [\App\Http\Controllers\Api\HomeworkController::class, 'deleteWeeklyHomework']);
+// Admin: Students dwara submit kiye gaye homework answer sheets dekhna
 Route::get('/admin/homework/submissions', [\App\Http\Controllers\Api\HomeworkController::class, 'getHomeworkSubmissions']);
+// Admin: Student ke submitted homework par grading aur feedback dena
 Route::post('/admin/homework/submissions/{id}/grade', [\App\Http\Controllers\Api\HomeworkController::class, 'gradeSubmission']);
 
+// Student: Current week ka assigned homework dekhna
 Route::get('/student/homework', [\App\Http\Controllers\Api\HomeworkController::class, 'getStudentWeeklyHomework']);
+// Student: Apne completed homework ki photos/file upload karke submit karna
 Route::post('/student/homework/{homeworkId}/submit', [\App\Http\Controllers\Api\HomeworkController::class, 'submitHomeworkPhoto']);
+// Student: Homework task ko complete/incomplete toggle karna
+Route::post('/student/homework/{homeworkId}/toggle-complete', [\App\Http\Controllers\Api\HomeworkController::class, 'toggleHomeworkCompletion']);
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TUITION CENTRES, LOCATIONS & STUDENT REGISTRATION ROUTES
+// ══════════════════════════════════════════════════════════════════════════════
+// Public: Active locations aur unke centres ke timing slots fetch karna
+Route::get('/locations', [\App\Http\Controllers\Api\RegistrationController::class, 'getLocationSlots']);
+// Public: Active tuition centres list fetch karna
+Route::get('/centres', [\App\Http\Controllers\Api\RegistrationController::class, 'getCentres']);
+// Public: Naye student ka online registration form submit karna
+Route::post('/registrations', [\App\Http\Controllers\Api\RegistrationController::class, 'submitRegistration']);
+// Public: Landing page se parent/student inquiry form submit karna
+Route::post('/enquiries', [\App\Http\Controllers\Api\AdminController::class, 'submitEnquiry']);
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ADMIN PORTAL BRANCHES, SLOTS & ENQUIRIES ROUTES
+// ══════════════════════════════════════════════════════════════════════════════
+// Admin: Sabhi tuition branches aur centres list fetch karna
+Route::get('/admin/branches', [\App\Http\Controllers\Api\AdminController::class, 'getBranches']);
+// Admin: Naya batch timing slot create karna
+Route::post('/admin/timing-slots', [\App\Http\Controllers\Api\AdminController::class, 'addTimingSlot']);
+// Admin: Existing timing slot update karna
+Route::put('/admin/timing-slots/{id}', [\App\Http\Controllers\Api\AdminController::class, 'updateTimingSlot']);
+// Admin: Timing slot delete karna
+Route::delete('/admin/timing-slots/{id}', [\App\Http\Controllers\Api\AdminController::class, 'deleteTimingSlot']);
+
+// Admin: Parent inquiries list dekhna
+Route::get('/admin/enquiries', [\App\Http\Controllers\Api\AdminController::class, 'getEnquiries']);
+// Admin: Specific inquiry par parent ko email/reply bhejna
+Route::post('/admin/enquiries/{id}/reply', [\App\Http\Controllers\Api\AdminController::class, 'replyEnquiry']);
+// Admin: Parents ko direct custom announcement ya update bhejna
+Route::post('/admin/parent-messages/send', [\App\Http\Controllers\Api\AdminController::class, 'sendDirectParentMessage']);
+
+// Admin: Online registrations list dekhna
+Route::get('/admin/registrations', [\App\Http\Controllers\Api\AdminController::class, 'getRegistrations']);
+// Admin: Student registration approve / reject / status update karna
+Route::post('/admin/registrations/{id}/status', [\App\Http\Controllers\Api\AdminController::class, 'updateRegistrationStatus']);
+
+// ══════════════════════════════════════════════════════════════════════════════
+// STUDENT REPORT CARD & MARKSHEET ROUTES
+// ══════════════════════════════════════════════════════════════════════════════
+// Student: Logged-in student ka academic report card aur marksheet fetch karna
+Route::get('/student/reportcards', [\App\Http\Controllers\Api\ReportcardController::class, 'getStudentReportCards']);
+
+// ══════════════════════════════════════════════════════════════════════════════
+// URL ENCRYPTION & SECURITY DEMO ROUTES (ALL 3 METHODS)
+// ══════════════════════════════════════════════════════════════════════════════
+// Method 1: Two-way AES-256 encrypted URL parameter
+Route::get('/security/demo-encrypt', [\App\Http\Controllers\Api\SecurityDemoController::class, 'demoEncrypt']);
+
+// Method 2: Laravel Tamper-proof Signed URL generation & verification
+Route::get('/security/demo-signed', [\App\Http\Controllers\Api\SecurityDemoController::class, 'demoSigned']);
+Route::get('/security/verify-signed', [\App\Http\Controllers\Api\SecurityDemoController::class, 'verifySigned'])->name('api.security.verify-signed');
+
+// Method 3: Obfuscated Hash IDs
+Route::get('/security/demo-hashid', [\App\Http\Controllers\Api\SecurityDemoController::class, 'demoHashId']);
+
+

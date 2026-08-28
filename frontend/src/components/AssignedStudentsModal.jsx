@@ -216,15 +216,13 @@ export default function AssignedStudentsModal({ test, onClose, onUpdate }) {
           {/* Controls: Filter tabs + Search input */}
           <div className={styles['assigned-controls']}>
             
-            {/* Department Filter Tabs */}
+            {/* Department / Class Filter Tabs */}
             <div className={styles['assigned-filter-tabs']}>
-              {/* ['All', 'BCA', 'BBA', 'BCom'] mein se har ek ke liye ek button */}
-              {['All', 'BCA', 'BBA', 'BCom'].map(dept => (
+              {['All', 'Year 3', 'Year 4', 'Year 5', 'Year 6', 'Year 7', 'Year 8', 'Year 9', 'Year 10', 'Year 11', 'GCSE', 'A-Level'].map(dept => (
                 <button 
                   key={dept}
-                  // filterDept === dept hone par 'active' class lagao (blue highlighted style)
                   className={`${styles['assigned-filter-tab']} ${filterDept === dept ? styles['active'] : ''}`}
-                  onClick={() => setFilterDept(dept)} // Click karne par filter update karo
+                  onClick={() => setFilterDept(dept)}
                 >
                   {dept}
                 </button>

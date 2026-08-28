@@ -14,18 +14,23 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
+    public const ROLE_ADMIN   = 'admin';
+    public const ROLE_TEACHER = 'teacher';
+    public const ROLE_STUDENT = 'student';
+
     protected $fillable = [
         'login_id',
         'name',
         'email',
         'password',
         'role',
+        'student_id',
     ];
+
+    public function student()
+    {
+        return $this->belongsTo(Student::class, 'student_id', 'id');
+    }
 
     /**
      * The attributes that should be hidden for serialization.

@@ -46,29 +46,18 @@
   transition: padding 0.28s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.brandLogoImg {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  border-radius: 8px;
+  object-fit: contain;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+  border: 1px solid #e2e8f0;
+}
+
 .sidebar:hover .sidebarHeader {
   padding: 22px 20px;
-}
-
-.brandIconBox {
-  width: 42px;
-  height: 42px;
-  min-width: 42px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: none;
-}
-
-.brandLogoText {
-  color: #ffffff;
-  font-size: 1.2rem;
-  font-weight: 900;
-  letter-spacing: -0.5px;
-  line-height: 1;
-  user-select: none;
 }
 
 .brandTitleWrap {
@@ -380,7 +369,61 @@
 .topNavRight {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+}
+
+.topNavCartBtn {
+  position: relative;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  outline: none;
+}
+
+.topNavCartBtn:hover {
+  background: #fff7ed;
+  color: #ea580c;
+  border-color: #fed7aa;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(234, 88, 12, 0.15);
+}
+
+.topNavCartBtn:active {
+  transform: scale(0.95);
+}
+
+.topNavCartBadge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  background: #ea580c;
+  color: #ffffff;
+  font-size: 0.65rem;
+  font-weight: 800;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  border: 2px solid #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 5px rgba(234, 88, 12, 0.4);
+  animation: cartBadgeBounce 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes cartBadgeBounce {
+  0% { transform: scale(0); }
+  100% { transform: scale(1); }
 }
 
 .deptBadgePill {
@@ -593,24 +636,108 @@
 @media (max-width: 768px) {
   .sidebar {
     transform: translateX(-100%);
-    width: 260px;
+    width: 270px;
+    z-index: 1000;
   }
   .sidebarMobileOpen {
     transform: translateX(0);
   }
   .hamburgerBtn {
     display: flex;
+    margin-right: 6px;
+    flex-shrink: 0;
   }
   .mobileCloseBtn {
     display: flex;
   }
   .mainWrapper {
     margin-left: 0;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
   }
   .sidebarBackdrop {
     position: fixed;
     inset: 0;
-    background: rgba(15, 23, 42, 0.5);
-    z-index: 99;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 999;
+  }
+  .topNav {
+    padding: 10px 12px;
+    gap: 8px;
+    justify-content: space-between;
+  }
+  .topNavLeft {
+    flex: 1;
+    min-width: 0;
+    gap: 8px;
+  }
+  .breadcrumbArea {
+    min-width: 0;
+    flex: 1;
+  }
+  .breadcrumbRoot, .breadcrumbSlash {
+    display: none;
+  }
+  .breadcrumbCurrent {
+    font-size: 0.92rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: block;
+    max-width: 170px;
+  }
+  .topNavRight {
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .topNavCartBtn {
+    width: 36px;
+    height: 36px;
+  }
+  .deptBadgePill {
+    padding: 4px 8px;
+    font-size: 0.72rem;
+    max-width: 100px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .pageBody {
+    padding: 12px 10px;
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+  .topSubNav {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .subTabs {
+    overflow-x: auto;
+    width: 100%;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+  }
+  .subTabBtn {
+    white-space: nowrap;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .deptBadgePill {
+    display: none;
+  }
+  .breadcrumbCurrent {
+    max-width: 130px;
+    font-size: 0.85rem;
+  }
+  .topNavRight {
+    gap: 6px;
   }
 }

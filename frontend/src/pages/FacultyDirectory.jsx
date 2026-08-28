@@ -39,7 +39,7 @@ export default function FacultyDirectory({ embedded = false }) {
   // Modals state
   const [showAddFacultyModal, setShowAddFacultyModal] = useState(false);
   const [editingFaculty, setEditingFaculty] = useState(null); // null if creating, teacher object if editing
-  const [facultyForm, setFacultyForm] = useState({ name: '', designation: 'Assistant Professor', department: '' });
+  const [facultyForm, setFacultyForm] = useState({ name: '', designation: 'Senior Specialist Tutor', department: '' });
 
   const [showAddDeptModal, setShowAddDeptModal] = useState(false);
   const [deptForm, setDeptForm] = useState({ name: '', code: '' });
@@ -470,7 +470,7 @@ export default function FacultyDirectory({ embedded = false }) {
 
                       <div className={styles.designationRow}>
                         <Award size={13} color="#64748b" />
-                        <span>{teacher.designation || 'Assistant Professor'}</span>
+                        <span>{teacher.designation || 'Senior Specialist Tutor'}</span>
                       </div>
                     </div>
 
@@ -561,11 +561,16 @@ export default function FacultyDirectory({ embedded = false }) {
                     onChange={e => setFacultyForm({ ...facultyForm, designation: e.target.value })}
                     className={styles.formSelect}
                   >
-                    <option value="Assistant Professor">Assistant Professor</option>
-                    <option value="Associate Professor">Associate Professor</option>
-                    <option value="Professor">Professor</option>
-                    <option value="Head of Department (HOD)">Head of Department (HOD)</option>
-                    <option value="Guest Lecturer">Guest Lecturer</option>
+                    <option value="Head of Academics & Mathematics Lead">Head of Academics & Mathematics Lead</option>
+                    <option value="Lead English & Verbal Reasoning Specialist">Lead English & Verbal Reasoning Specialist</option>
+                    <option value="Non-Verbal & Spatial Reasoning Specialist">Non-Verbal & Spatial Reasoning Specialist</option>
+                    <option value="Senior Physics & Science Specialist">Senior Physics & Science Specialist</option>
+                    <option value="Lead Chemistry & Biology Specialist">Lead Chemistry & Biology Specialist</option>
+                    <option value="Senior GCSE & A-Level Mathematics Tutor">Senior GCSE & A-Level Mathematics Tutor</option>
+                    <option value="Advanced A-Level Mathematics & Economics Lead">Advanced A-Level Mathematics & Economics Lead</option>
+                    <option value="11+ Primary Foundation Tutor">11+ Primary Foundation Tutor</option>
+                    <option value="Senior Specialist Tutor">Senior Specialist Tutor</option>
+                    <option value="Assistant Tutor">Assistant Tutor</option>
                   </select>
                 </div>
 

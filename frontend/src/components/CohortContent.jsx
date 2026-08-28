@@ -12,7 +12,9 @@ import {
   Info, 
   FileText, 
   Shuffle, 
-  RotateCcw
+  RotateCcw,
+  ClipboardList,
+  CheckCircle2
 } from 'lucide-react';
 import StudentSubmissionModal from './StudentSubmissionModal';
 import styles from '../App.module.css';
@@ -242,7 +244,33 @@ export default function CohortContent({ activeFilter, setActiveFilter, viewMode,
             </button>
           ))}
         </div>
+      )}
 
+      {/* Transitional Top Header Bar with Smooth Scroll Button */}
+      {isTransitional && (
+        <div className={styles['transitional-top-bar']}>
+          <div className={styles['transitional-top-left']}>
+            <h3>
+              <span>⚡</span> Transitional Assessment Track
+            </h3>
+            <p>Active assigned tests &amp; completed assessment papers</p>
+          </div>
+          <button 
+            type="button"
+            className={styles['transitional-scroll-btn']}
+            onClick={() => {
+              const el = document.getElementById('completed-tests-section');
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            }}
+          >
+            <CheckCircle2 size={16} />
+            <span>Completed Tests</span>
+            <span className={styles['transitional-count-badge']}>{completedTests.length}</span>
+            <span className={styles['bounce-arrow']}>↓</span>
+          </button>
+        </div>
       )}
 
       {/* Info Accommodations Banner */}

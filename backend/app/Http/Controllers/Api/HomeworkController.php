@@ -19,83 +19,34 @@ class HomeworkController extends Controller
     public function saveWeeklyHomework(Request $request)
     {
         $validated = $request->validate([
-            'target_type' => 'required|in:course,student',
-            'course_id' => 'nullable|exists:courses,id',
-            'roll_no' => 'nullable|string',
-            'week_start_date' => 'required|date',
-            'items' => 'required|array',
+            'target_type'         => 'required|in:course,student',
+            'course_id'           => 'nullable|exists:courses,id',
+            'roll_no'             => 'nullable|string',
+            'week_start_date'     => 'required|date',
+            'items'               => 'required|array',
             'items.*.day_of_week' => 'required|string',
-            'items.*.subject_id' => 'nullable',
+            'items.*.subject_id'   => 'nullable',
             'items.*.subject_name' => 'nullable|string',
-            'items.*.title' => 'nullable|string',
+            'items.*.title'       => 'nullable|string',
             'items.*.description' => 'nullable|string',
-            'items.*.due_date' => 'nullable|date',
+            'items.*.due_date'    => 'nullable|date',
         ]);
 
         DB::beginTransaction();
         try {
-            $weekStartDate = Carbon::parse($validated['week_start_date'])->startOfWeek()->format('Y-m-d');
-            $targetType = $validated['target_type'];
-            $courseId = $validated['course_id'] ?? null;
-            $rollNo = $validated['roll_no'] ?? null;
-
-            // Delete existing records for this week & target to overwrite cleanly
-            $query = Homework::where('week_start_date', $weekStartDate)
-                ->where('target_type', $targetType);
-
-            if ($targetType === 'course') {
-                $query->where('course_id', $courseId);
-            } else {
-                $query->where('roll_no', $rollNo);
-            }
-            $query->forceDelete();
-
-            $createdCount = 0;
-            foreach ($validated['items'] as $item) {
-                // Only save entries that have at least a title, description, or subject_id
-                if (empty($item['title']) && empty($item['description']) && empty($item['subject_id'])) {
-                    continue;
-                }
-
-                Homework::create([
-                    'target_type' => $targetType,
-                    'course_id' => $targetType === 'course' ? $courseId : null,
-                    'roll_no' => $targetType === 'student' ? $rollNo : null,
-                    'week_start_date' => $weekStartDate,
-                    'day_of_week' => $item['day_of_week'],
-                    'subject_id' => !empty($item['subject_id']) ? $item['subject_id'] : null,
-                    'title' => $item['title'] ?? 'Homework Assignment',
-                    'description' => $item['description'] ?? '',
-                    'due_date' => !empty($item['due_date']) ? $item['due_date'] : null,
-                ]);
-                $createdCount++;
-            }
-
-            if ($createdCount > 0) {
-                $courseName = $courseId ? (Course::find($courseId)?->name ?? 'Course') : 'your course';
-                Notification::create([
-                    'recipient_type' => 'student',
-                    'roll_no' => $targetType === 'student' ? $rollNo : null,
-                    'title' => 'New Weekly Homework Published 📚',
-                    'message' => "Admin published {$createdCount} new homework task(s) for {$courseName} (Week of {$weekStartDate}).",
-                    'type' => 'homework',
-                    'link' => '/student/homework',
-                ]);
-            }
-
+            $result = Homework::saveWeeklyBatch($validated);
             DB::commit();
 
             return response()->json([
-                'success' => true,
-                'message' => "Successfully saved {$createdCount} homework tasks for the week of {$weekStartDate}.",
-                'week_start_date' => $weekStartDate
+                'success'         => true,
+                'message'         => "Successfully saved {$result['created_count']} homework tasks for the week of {$result['week_start_date']}.",
+                'week_start_date' => $result['week_start_date'],
             ]);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to save weekly homework: ' . $e->getMessage()
+                'message' => 'Failed to save weekly homework: ' . $e->getMessage(),
             ], 500);
         }
     }
@@ -414,8 +365,11 @@ class HomeworkController extends Controller
             });
         }
 
-        // ONLY show submissions that have an actual photo attached
-        $query->whereNotNull('attachment_photo')->where('attachment_photo', '!=', '');
+        // Show all completed, submitted, or verified student homework records
+        $query->where(function ($q) {
+            $q->whereIn('status', ['completed', 'submitted', 'verified'])
+              ->orWhereNotNull('attachment_photo');
+        });
 
         $submissions = $query->orderBy('submitted_at', 'desc')->get();
 
@@ -449,6 +403,69 @@ class HomeworkController extends Controller
             'success' => true,
             'submissions' => $submissions,
             'student_progress' => $studentProgress
+        ]);
+    }
+
+    /**
+     * Toggle homework completion status by student (Mark Complete / Mark Pending)
+     */
+    public function toggleHomeworkCompletion(Request $request, $homeworkId)
+    {
+        $homework = Homework::findOrFail($homeworkId);
+        $user = $request->user();
+        $inputRoll = trim($request->input('roll_no', ''));
+        $status = $request->input('status', 'completed'); // 'completed' or 'pending'
+
+        $student = null;
+        if ($user) {
+            $student = Student::where('email adress', $user->email)
+                ->orWhere('email_adress', $user->email)
+                ->orWhere('roll no', $user->login_id ?? $user->username)
+                ->first();
+        }
+        if (!$student && !empty($inputRoll)) {
+            $rollCol = \Illuminate\Support\Facades\Schema::hasColumn('student', 'roll no') ? 'roll no' : 'roll_no';
+            $student = Student::where($rollCol, $inputRoll)->first();
+        }
+
+        $studentId   = $student ? $student->id : null;
+        $studentName = $student ? $student->name : 'Student';
+        $rollNo      = $student ? ($student->{'roll no'} ?? $student->roll_no ?? $inputRoll) : $inputRoll;
+
+        $existing = \App\Models\HomeworkSubmission::where('homework_id', $homeworkId)
+            ->where(function ($q) use ($studentId, $rollNo) {
+                if ($studentId) {
+                    $q->where('student_id', $studentId)->orWhere('roll_no', $rollNo);
+                } else {
+                    $q->where('roll_no', $rollNo);
+                }
+            })
+            ->first();
+
+        $newStatus = ($status === 'pending') ? 'pending' : 'completed';
+
+        if ($existing) {
+            $existing->student_id = $studentId ?: $existing->student_id;
+            $existing->student_name = $studentName ?: $existing->student_name;
+            $existing->status = $newStatus;
+            $existing->submitted_at = now();
+            $existing->save();
+            $submission = $existing;
+        } else {
+            $submission = \App\Models\HomeworkSubmission::create([
+                'homework_id' => $homeworkId,
+                'student_id' => $studentId,
+                'student_name' => $studentName,
+                'roll_no' => $rollNo,
+                'status' => $newStatus,
+                'submitted_at' => now()
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Homework completion updated',
+            'submission' => $submission
         ]);
     }
 

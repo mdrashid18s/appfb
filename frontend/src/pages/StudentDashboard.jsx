@@ -7,39 +7,57 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import styles from './StudentDashboard.module.css';
-import { 
-  ClipboardList, 
-  Award, 
-  CalendarDays, 
-  Megaphone, 
-  AlertTriangle, 
-  Clock, 
-  User, 
-  LogOut, 
-  ChevronRight, 
-  Menu, 
+import {
+  ClipboardList,
+  Award,
+  CalendarDays,
+  Megaphone,
+  AlertTriangle,
+  Clock,
+  User,
+  LogOut,
+  ChevronRight,
+  Menu,
   X,
   GraduationCap,
   Users,
   Activity,
   ArrowRightLeft,
-  FileText
+  FileText,
+  ShoppingBag
 } from 'lucide-react';
 import CohortContent from '../components/CohortContent';
 import StudentTimetable from '../components/StudentTimetable';
+import SiteFooter from '../components/SiteFooter';
 import StudentHomework from '../components/StudentHomework';
 import StudentAnalyticsBanner from '../components/StudentAnalyticsBanner';
 import NotificationBell from '../components/NotificationBell';
+import StudentStore from '../components/StudentStore';
 import MyProfile from './MyProfile';
 import NoticeboardView from './NoticeboardView';
 import { useToast } from '../contexts/ToastContext';
+import Reportcard from './Reportcard';
 
 export default function StudentDashboard() {
   const location = useLocation();
   const navigate = useNavigate();
   const toast = useToast();
 
-  const [activeTab, setActiveTab] = useState('tests'); // 'tests', 'analytics', 'timetable', 'notices', 'missed', 'history', 'profile'
+  const getInitialTab = () => {
+    const p = window.location.pathname;
+    if (p.includes('/profile')) return 'profile';
+    if (p.includes('/store') || p.includes('/products')) return 'store';
+    if (p.includes('/timetable')) return 'timetable';
+    if (p.includes('/homework')) return 'homework';
+    if (p.includes('/notices')) return 'notices';
+    if (p.includes('/analytics')) return 'analytics';
+    if (p.includes('/missed')) return 'missed';
+    if (p.includes('/history')) return 'history';
+    if (p.includes('/reportcard')) return 'reportcard';
+    return 'tests';
+  };
+
+  const [activeTab, setActiveTab] = useState(getInitialTab);
   const [subTab, setSubTab] = useState('cohort'); // 'cohort', 'pulse', 'transitional'
   const [activeFilter, setActiveFilter] = useState('All');
   const [viewMode, setViewMode] = useState('default');
@@ -49,8 +67,41 @@ export default function StudentDashboard() {
   const [assignedTests, setAssignedTests] = useState([]);
   const [loadingTests, setLoadingTests] = useState(true);
 
+  /** Real-time Cart Count for Top Navbar */
+  const [cartCount, setCartCount] = useState(() => {
+    try {
+      const saved = localStorage.getItem('appfb_student_cart');
+      return saved ? JSON.parse(saved).length : 0;
+    } catch (e) {
+      return 0;
+    }
+  });
+
+  useEffect(() => {
+    const updateCartCount = () => {
+      try {
+        const saved = localStorage.getItem('appfb_student_cart');
+        setCartCount(saved ? JSON.parse(saved).length : 0);
+      } catch (e) {
+        setCartCount(0);
+      }
+    };
+
+    window.addEventListener('cartUpdated', updateCartCount);
+    window.addEventListener('storage', updateCartCount);
+    return () => {
+      window.removeEventListener('cartUpdated', updateCartCount);
+      window.removeEventListener('storage', updateCartCount);
+    };
+  }, []);
+
   // Mandatory Profile Modal
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const SCHOOL_YEARS = [
+    'Year 6', 'Year 7', 'Year 8', 'Year 9', 'Year 10',
+    'Year 11', 'Year 12', 'Year 13', 'GCSE', 'A-Level'
+  ];
+
   const [profileForm, setProfileForm] = useState({
     name: '', department: '', phone_no: '', dob: '', address: ''
   });
@@ -62,7 +113,7 @@ export default function StudentDashboard() {
     if (storedStudent) {
       const parsedStudent = JSON.parse(storedStudent);
       setStudent(parsedStudent);
-      
+
       // Show profile modal ONLY for brand new email users
       const isNew = localStorage.getItem('isNewUser') === 'true';
       if (isNew) {
@@ -70,25 +121,47 @@ export default function StudentDashboard() {
       } else {
         setShowProfileModal(false);
       }
-      
+
       const rollNoToUse = parsedStudent['roll no'] || parsedStudent.roll_no || parsedStudent.login_id || parsedStudent.id;
       if (rollNoToUse) {
         fetchAssignedTests(rollNoToUse);
       } else {
         setLoadingTests(false);
       }
+
+      if (location.pathname.includes('/profile')) {
+        setActiveTab('profile');
+      } else if (location.pathname.includes('/store') || location.pathname.includes('/products')) {
+        setActiveTab('store');
+      } else if (location.pathname.includes('/timetable')) {
+        setActiveTab('timetable');
+      } else if (location.pathname.includes('/homework')) {
+        setActiveTab('homework');
+      } else if (location.pathname.includes('/notices')) {
+        setActiveTab('notices');
+      } else if (location.pathname.includes('/analytics')) {
+        setActiveTab('analytics');
+      } else if (location.pathname.includes('/missed')) {
+        setActiveTab('missed');
+      } else if (location.pathname.includes('/history')) {
+        setActiveTab('history');
+      } else if (location.pathname.includes('/reportcard')) {
+        setActiveTab('reportcard');
+      } else {
+        setActiveTab('tests');
+      }
     } else {
       navigate('/login/student');
     }
-  }, [navigate]);
+  }, [navigate, location.pathname]);
 
   const fetchAssignedTests = async (rollNo) => {
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`/api/student/${rollNo}/tests`, {
-        headers: { 
+        headers: {
           'Accept': 'application/json',
-          'Authorization': `Bearer ${token}` 
+          'Authorization': `Bearer ${token}`
         }
       });
       if (res.status === 401) {
@@ -173,7 +246,7 @@ export default function StudentDashboard() {
     <div className={styles.appContainer}>
       {/* Sidebar Overlay for Mobile */}
       {mobileSidebarOpen && (
-        <div 
+        <div
           className={styles.sidebarBackdrop}
           onClick={() => setMobileSidebarOpen(false)}
         />
@@ -183,15 +256,13 @@ export default function StudentDashboard() {
       <aside className={`${styles.sidebar} ${mobileSidebarOpen ? styles.sidebarMobileOpen : ''}`}>
         {/* Brand Header */}
         <div className={styles.sidebarHeader}>
-          <div className={styles.brandIconBox}>
-            <span className={styles.brandLogoText}>XL</span>
-          </div>
+          <img src="/logo.svg" alt="XL Education" className={styles.brandLogoImg} />
           <div className={styles.brandTitleWrap}>
             <h2 className={styles.brandTitle}>XL Education</h2>
             <span className={styles.brandBadge}>Student Portal</span>
           </div>
-          <button 
-            className={styles.mobileCloseBtn} 
+          <button
+            className={styles.mobileCloseBtn}
             onClick={() => setMobileSidebarOpen(false)}
           >
             <X size={20} />
@@ -202,7 +273,7 @@ export default function StudentDashboard() {
         <nav className={styles.sidebarNav}>
           <button
             className={`${styles.navItem} ${activeTab === 'tests' ? styles.navItemActive : ''}`}
-            onClick={() => { setActiveTab('tests'); setMobileSidebarOpen(false); }}
+            onClick={() => { setActiveTab('tests'); navigate('/student'); setMobileSidebarOpen(false); }}
           >
             <ClipboardList size={18} className={styles.navIcon} />
             <span>My Tests & Papers</span>
@@ -211,7 +282,7 @@ export default function StudentDashboard() {
 
           <button
             className={`${styles.navItem} ${activeTab === 'analytics' ? styles.navItemActive : ''}`}
-            onClick={() => { setActiveTab('analytics'); setMobileSidebarOpen(false); }}
+            onClick={() => { setActiveTab('analytics'); navigate('/student/analytics'); setMobileSidebarOpen(false); }}
           >
             <Award size={18} className={styles.navIcon} />
             <span>Performance & Rank</span>
@@ -220,7 +291,7 @@ export default function StudentDashboard() {
 
           <button
             className={`${styles.navItem} ${activeTab === 'timetable' ? styles.navItemActive : ''}`}
-            onClick={() => { setActiveTab('timetable'); setMobileSidebarOpen(false); }}
+            onClick={() => { setActiveTab('timetable'); navigate('/student/timetable'); setMobileSidebarOpen(false); }}
           >
             <CalendarDays size={18} className={styles.navIcon} />
             <span>Class Timetable</span>
@@ -229,7 +300,7 @@ export default function StudentDashboard() {
 
           <button
             className={`${styles.navItem} ${activeTab === 'homework' ? styles.navItemActive : ''}`}
-            onClick={() => { setActiveTab('homework'); setMobileSidebarOpen(false); }}
+            onClick={() => { setActiveTab('homework'); navigate('/student/homework'); setMobileSidebarOpen(false); }}
           >
             <FileText size={18} className={styles.navIcon} />
             <span>Weekly Homework</span>
@@ -237,8 +308,21 @@ export default function StudentDashboard() {
           </button>
 
           <button
+            className={`${styles.navItem} ${activeTab === 'store' ? styles.navItemActive : ''}`}
+            onClick={() => { setActiveTab('store'); navigate('/student/store'); setMobileSidebarOpen(false); }}
+            style={{
+              background: activeTab === 'store' ? 'linear-gradient(135deg, #4f46e5 0%, #4338ca 100%)' : undefined,
+              color: activeTab === 'store' ? '#ffffff' : undefined
+            }}
+          >
+            <ShoppingBag size={18} className={styles.navIcon} />
+            <span>Product Catalog</span>
+            <ChevronRight size={14} className={styles.navArrow} />
+          </button>
+
+          <button
             className={`${styles.navItem} ${activeTab === 'notices' ? styles.navItemActive : ''}`}
-            onClick={() => { setActiveTab('notices'); setMobileSidebarOpen(false); }}
+            onClick={() => { setActiveTab('notices'); navigate('/student/notices'); setMobileSidebarOpen(false); }}
           >
             <Megaphone size={18} className={styles.navIcon} />
             <span>Noticeboard</span>
@@ -246,8 +330,17 @@ export default function StudentDashboard() {
           </button>
 
           <button
+            className={`${styles.navItem} ${activeTab === 'reportcard' ? styles.navItemActive : ''}`}
+            onClick={() => { setActiveTab('reportcard'); navigate('/student/reportcard'); setMobileSidebarOpen(false); }}
+          >
+            <Award size={18} className={styles.navIcon} />
+            <span>Report Card</span>
+            <ChevronRight size={14} className={styles.navArrow} />
+          </button>
+
+          <button
             className={`${styles.navItem} ${activeTab === 'missed' ? styles.navItemActive : ''}`}
-            onClick={() => { setActiveTab('missed'); setMobileSidebarOpen(false); }}
+            onClick={() => { setActiveTab('missed'); navigate('/student/missed'); setMobileSidebarOpen(false); }}
           >
             <AlertTriangle size={18} className={styles.navIcon} />
             <span>Missed Tests</span>
@@ -257,7 +350,7 @@ export default function StudentDashboard() {
 
           <button
             className={`${styles.navItem} ${activeTab === 'history' ? styles.navItemActive : ''}`}
-            onClick={() => { setActiveTab('history'); setMobileSidebarOpen(false); }}
+            onClick={() => { setActiveTab('history'); navigate('/student/history'); setMobileSidebarOpen(false); }}
           >
             <Clock size={18} className={styles.navIcon} />
             <span>Test History</span>
@@ -266,7 +359,7 @@ export default function StudentDashboard() {
 
           <button
             className={`${styles.navItem} ${activeTab === 'profile' ? styles.navItemActive : ''}`}
-            onClick={() => { setActiveTab('profile'); setMobileSidebarOpen(false); }}
+            onClick={() => { setActiveTab('profile'); navigate('/student/profile'); setMobileSidebarOpen(false); }}
           >
             <User size={18} className={styles.navIcon} />
             <span>My Profile</span>
@@ -276,7 +369,12 @@ export default function StudentDashboard() {
 
         {/* Sidebar Footer User Card */}
         <div className={styles.sidebarFooter}>
-          <div className={styles.userCard}>
+          <div
+            className={styles.userCard}
+            onClick={() => { setActiveTab('profile'); navigate('/student/profile'); setMobileSidebarOpen(false); }}
+            style={{ cursor: 'pointer' }}
+            title="View My Profile"
+          >
             <div className={styles.userAvatar}>
               {student.dp ? (
                 <img src={`/${student.dp}`} alt="DP" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
@@ -285,8 +383,8 @@ export default function StudentDashboard() {
               )}
             </div>
             <div className={styles.userInfo}>
-              <span className={styles.userName}>{student.name}</span>
-              <span className={styles.userRole}>Roll #{student['roll no'] || student.roll_no || 'STU'}</span>
+              <span className={styles.userName}>{student.name || 'Student'}</span>
+              <span className={styles.userRole}>{student['roll no'] || student.roll_no || student.login_id || 'ID: Active'}</span>
             </div>
           </div>
 
@@ -302,8 +400,8 @@ export default function StudentDashboard() {
         {/* Top Navbar */}
         <header className={styles.topNavbar}>
           <div className={styles.topNavLeft}>
-            <button 
-              className={styles.hamburgerBtn} 
+            <button
+              className={styles.hamburgerBtn}
               onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
             >
               <Menu size={22} />
@@ -318,6 +416,7 @@ export default function StudentDashboard() {
                 {activeTab === 'timetable' && 'Class & Exam Schedule Timetable'}
                 {activeTab === 'homework' && 'Weekly Course Homework & Tasks'}
                 {activeTab === 'notices' && 'Academic Noticeboard Announcements'}
+                {activeTab === 'reportcard' && 'Academic Performance & Marksheets'}
                 {activeTab === 'missed' && 'Missed Exam Attempt Recovery'}
                 {activeTab === 'history' && 'Past Scorecards & Detailed Solutions'}
                 {activeTab === 'profile' && 'Student Profile & Personal Information'}
@@ -326,10 +425,36 @@ export default function StudentDashboard() {
           </div>
 
           <div className={styles.topNavRight}>
-            <NotificationBell role="student" student={student} onSelectTab={(tab) => setActiveTab(tab)} />
+            <button
+              type="button"
+              className={styles.topNavCartBtn}
+              onClick={() => {
+                setActiveTab('store');
+                navigate('/student/dashboard?tab=store');
+                setTimeout(() => {
+                  window.dispatchEvent(new Event('openStoreCart'));
+                }, 100);
+              }}
+              title="View Shopping Cart"
+              aria-label={`Shopping Cart (${cartCount} items)`}
+            >
+              <ShoppingBag size={18} />
+              {cartCount > 0 && <span className={styles.topNavCartBadge}>{cartCount}</span>}
+            </button>
+
+            <NotificationBell 
+              role="student" 
+              student={student} 
+              onSelectTab={(tab) => {
+                setActiveTab(tab);
+                if (tab === 'tests') navigate('/student');
+                else navigate(`/student/${tab}`);
+              }} 
+            />
+
             <div className={styles.deptBadgePill}>
               <GraduationCap size={14} color="#ea580c" />
-              <span>{student.department || 'BCA'}</span>
+              <span>{student.course_name || student.department || student.course?.name || student.course?.code || 'Year 5'}</span>
             </div>
           </div>
         </header>
@@ -342,19 +467,19 @@ export default function StudentDashboard() {
               {/* Top Sub-Nav Bar (Cohort, Pulse, Transitional Sub-Tabs) */}
               <div className={styles.topSubNav}>
                 <div className={styles.subTabs}>
-                  <button 
+                  <button
                     className={`${styles.subTabBtn} ${subTab === 'cohort' ? styles.subTabActive : ''}`}
                     onClick={() => { setSubTab('cohort'); setViewMode('default'); }}
                   >
                     <Users size={16} /> Cohort
                   </button>
-                  <button 
+                  <button
                     className={`${styles.subTabBtn} ${subTab === 'pulse' ? styles.subTabActive : ''}`}
                     onClick={() => { setSubTab('pulse'); setViewMode('default'); }}
                   >
                     <Activity size={16} /> Pulse
                   </button>
-                  <button 
+                  <button
                     className={`${styles.subTabBtn} ${subTab === 'transitional' ? styles.subTabActive : ''}`}
                     onClick={() => { setSubTab('transitional'); setViewMode('default'); }}
                   >
@@ -365,9 +490,9 @@ export default function StudentDashboard() {
 
               {/* Sub-Tab Content Rendering */}
               {subTab === 'cohort' && (
-                <CohortContent 
-                  activeFilter={activeFilter} 
-                  setActiveFilter={setActiveFilter} 
+                <CohortContent
+                  activeFilter={activeFilter}
+                  setActiveFilter={setActiveFilter}
                   viewMode={viewMode}
                   tests={assignedTests.filter(t => t.category !== 'Transitional')}
                   loading={loadingTests}
@@ -378,9 +503,9 @@ export default function StudentDashboard() {
                 <div className={styles.contentCard}>
                   <h3>Pulse Practice Tests</h3>
                   <p>Daily micro-practice tests and instant skill checks.</p>
-                  <CohortContent 
-                    activeFilter={activeFilter} 
-                    setActiveFilter={setActiveFilter} 
+                  <CohortContent
+                    activeFilter={activeFilter}
+                    setActiveFilter={setActiveFilter}
                     viewMode={viewMode}
                     tests={assignedTests.filter(t => t.category === 'Pulse' || t.category === 'Weekly')}
                     loading={loadingTests}
@@ -389,9 +514,9 @@ export default function StudentDashboard() {
               )}
 
               {subTab === 'transitional' && (
-                <CohortContent 
+                <CohortContent
                   activeFilter="All"
-                  setActiveFilter={() => {}}
+                  setActiveFilter={() => { }}
                   viewMode={viewMode}
                   tests={assignedTests.filter(t => t.category === 'Transitional')}
                   loading={loadingTests}
@@ -421,6 +546,13 @@ export default function StudentDashboard() {
               <StudentHomework student={student} />
             </div>
           )}
+          {/* Report Card Tab */}
+          {activeTab === 'reportcard' && (
+            <div className={styles.contentCard} style={{ padding: 0, overflow: 'hidden' }}>
+              <Reportcard student={student} />
+            </div>
+          )}
+
 
           {/* Noticeboard Tab */}
           {activeTab === 'notices' && (
@@ -431,30 +563,44 @@ export default function StudentDashboard() {
 
           {/* Missed Tests Tab */}
           {activeTab === 'missed' && (
-            <CohortContent 
-              activeFilter="All" 
-              setActiveFilter={() => {}} 
-              viewMode="missed" 
-              tests={assignedTests} 
-              loading={loadingTests} 
+            <CohortContent
+              activeFilter="All"
+              setActiveFilter={() => { }}
+              viewMode="missed"
+              tests={assignedTests}
+              loading={loadingTests}
             />
           )}
 
           {/* Test History Tab */}
           {activeTab === 'history' && (
-            <CohortContent 
-              activeFilter="All" 
-              setActiveFilter={() => {}} 
-              viewMode="history" 
-              tests={assignedTests} 
-              loading={loadingTests} 
+            <CohortContent
+              activeFilter="All"
+              setActiveFilter={() => { }}
+              viewMode="history"
+              tests={assignedTests}
+              loading={loadingTests}
             />
           )}
 
           {/* Profile Tab */}
           {activeTab === 'profile' && (
-            <MyProfile student={student} onUpdateStudent={handleUpdateStudent} />
+            <MyProfile
+              student={student}
+              onUpdateStudent={handleUpdateStudent}
+              onBack={() => { setActiveTab('tests'); navigate('/student'); }}
+            />
           )}
+
+          {/* Store & Products Tab */}
+          {activeTab === 'store' && (
+            <StudentStore student={student} />
+          )}
+
+          {/* Unified Site Footer */}
+          <div style={{ marginTop: '3rem', margin: '3rem -2rem -2rem', overflow: 'hidden', borderRadius: '0 0 1rem 1rem' }}>
+            <SiteFooter showFloatingWa={false} />
+          </div>
         </div>
       </main>
 
@@ -464,43 +610,43 @@ export default function StudentDashboard() {
           <div className={styles.modalContent}>
             <h2>Complete Your Student Profile</h2>
             <p>Please provide your academic details to access your portal.</p>
-            
+
             {profileError && (
               <div className={styles.errorBox}>{profileError}</div>
             )}
-            
+
             <form onSubmit={handleProfileSubmit} className={styles.profileModalForm}>
               <div className={styles.formGroup}>
                 <label>FULL NAME *</label>
-                <input 
-                  type="text" 
-                  value={profileForm.name} 
-                  onChange={e => setProfileForm({ ...profileForm, name: e.target.value })} 
+                <input
+                  type="text"
+                  value={profileForm.name}
+                  onChange={e => setProfileForm({ ...profileForm, name: e.target.value })}
                   placeholder="Enter full name"
                   required
                 />
               </div>
 
               <div className={styles.formGroup}>
-                <label>DEPARTMENT / COURSE *</label>
-                <select 
-                  value={profileForm.department} 
+                <label>SCHOOL YEAR / CLASS *</label>
+                <select
+                  value={profileForm.department}
                   onChange={e => setProfileForm({ ...profileForm, department: e.target.value })}
                   required
                 >
-                  <option value="">Select Department</option>
-                  <option value="BCA">BCA - Computer Applications</option>
-                  <option value="BBA">BBA - Business Administration</option>
-                  <option value="BCOM">BCOM - Commerce</option>
+                  <option value="">Select Year / Class</option>
+                  {SCHOOL_YEARS.map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
                 </select>
               </div>
 
               <div className={styles.formGroup}>
                 <label>PHONE NUMBER *</label>
-                <input 
-                  type="tel" 
-                  value={profileForm.phone_no} 
-                  onChange={e => setProfileForm({ ...profileForm, phone_no: e.target.value })} 
+                <input
+                  type="tel"
+                  value={profileForm.phone_no}
+                  onChange={e => setProfileForm({ ...profileForm, phone_no: e.target.value })}
                   placeholder="Phone number"
                   required
                 />
@@ -508,20 +654,20 @@ export default function StudentDashboard() {
 
               <div className={styles.formGroup}>
                 <label>DATE OF BIRTH *</label>
-                <input 
-                  type="date" 
-                  value={profileForm.dob} 
-                  onChange={e => setProfileForm({ ...profileForm, dob: e.target.value })} 
+                <input
+                  type="date"
+                  value={profileForm.dob}
+                  onChange={e => setProfileForm({ ...profileForm, dob: e.target.value })}
                   required
                 />
               </div>
 
               <div className={styles.formGroup}>
                 <label>ADDRESS *</label>
-                <input 
-                  type="text" 
-                  value={profileForm.address} 
-                  onChange={e => setProfileForm({ ...profileForm, address: e.target.value })} 
+                <input
+                  type="text"
+                  value={profileForm.address}
+                  onChange={e => setProfileForm({ ...profileForm, address: e.target.value })}
                   placeholder="Residential Address"
                   required
                 />

@@ -133,18 +133,43 @@ export default function StudentHomework({ student }) {
   const handleNextWeek = () => setCurrentWeekStart(prev => addDays(prev, 7));
   const handleResetToCurrentWeek = () => setCurrentWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }));
 
-  const toggleTaskCompletion = (taskId) => {
-    let updated;
-    if (completedTaskIds.includes(taskId)) {
-      updated = completedTaskIds.filter(id => id !== taskId);
-    } else {
-      updated = [...completedTaskIds, taskId];
-    }
+  const toggleTaskCompletion = async (taskId) => {
+    const isCurrentlyDone = completedTaskIds.includes(taskId);
+    const newDoneState = !isCurrentlyDone;
+
+    const updated = newDoneState
+      ? [...completedTaskIds, taskId]
+      : completedTaskIds.filter(id => id !== taskId);
+
     setCompletedTaskIds(updated);
     try {
       localStorage.setItem(`homework_done_${student?.id}`, JSON.stringify(updated));
     } catch (e) {
       console.error(e);
+    }
+
+    if (newDoneState) {
+      toast.success('Homework task marked as completed! ✅');
+    }
+
+    // Sync completion status with server
+    try {
+      const rollNo = student?.['roll no'] || student?.roll_no || student?.login_id || '';
+      const token = localStorage.getItem('token');
+      await fetch(`/api/student/homework/${taskId}/toggle-complete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': token ? `Bearer ${token}` : ''
+        },
+        body: JSON.stringify({
+          roll_no: rollNo,
+          status: newDoneState ? 'completed' : 'pending'
+        })
+      });
+    } catch (err) {
+      console.error('Failed to sync homework completion with server:', err);
     }
   };
 
@@ -322,91 +347,31 @@ export default function StudentHomework({ student }) {
                           )}
                         </div>
 
-                        {/* Photo Submission & Action Buttons */}
+                        {/* Completion Checkmark Toggle Action */}
                         <div className={styles.actionCol} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                          {hasPhoto && (
-                            <button
-                              type="button"
-                              className={styles.photoPreviewBtn}
-                              onClick={() => setPreviewPhotoUrl(photoSrc)}
-                              title="Click to view submitted notebook photo"
-                              style={{ background: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd', padding: '0.35rem 0.65rem', borderRadius: '0.375rem', fontSize: '0.775rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}
-                            >
-                              <Camera size={14} />
-                              <span>View Photo</span>
-                            </button>
-                          )}
-
-                          <label 
-                            className={styles.uploadPhotoLabel} 
-                            title="Upload notebook photo proof to complete task"
+                          <button
+                            type="button"
+                            onClick={() => toggleTaskCompletion(task.id)}
                             style={{ 
-                              background: hasPhoto ? '#f0fdf4' : '#4f46e5', 
-                              color: hasPhoto ? '#166534' : '#ffffff', 
-                              border: hasPhoto ? '1px solid #bbf7d0' : 'none',
-                              padding: '0.4rem 0.8rem',
-                              borderRadius: '0.375rem',
-                              fontSize: '0.8rem',
+                              background: isDone ? '#dcfce7' : '#4f46e5', 
+                              color: isDone ? '#15803d' : '#ffffff', 
+                              border: isDone ? '1px solid #bbf7d0' : 'none',
+                              padding: '0.45rem 0.9rem',
+                              borderRadius: '0.5rem',
+                              fontSize: '0.825rem',
                               fontWeight: 700,
                               cursor: 'pointer',
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '0.4rem',
-                              transition: 'all 0.2s ease'
+                              transition: 'all 0.2s ease',
+                              boxShadow: isDone ? 'none' : '0 2px 4px rgba(79, 70, 229, 0.2)'
                             }}
+                            title={isDone ? "Click to mark as pending" : "Click to mark homework completed"}
                           >
-                            <Upload size={14} />
-                            <span>{uploadingTaskId === task.id ? 'Uploading...' : (hasPhoto ? 'Re-upload Photo' : 'Submit Photo Proof')}</span>
-                            <input
-                              type="file"
-                              accept="image/*"
-                              style={{ display: 'none' }}
-                              onChange={(e) => {
-                                if (e.target.files && e.target.files[0]) {
-                                  handleUploadPhoto(task.id, e.target.files[0]);
-                                }
-                              }}
-                              disabled={uploadingTaskId === task.id}
-                            />
-                          </label>
-
-                          {isDone ? (
-                            <span 
-                              style={{ 
-                                background: '#dcfce7', 
-                                color: '#15803d', 
-                                border: '1px solid #bbf7d0', 
-                                padding: '0.4rem 0.75rem', 
-                                borderRadius: '0.375rem', 
-                                fontSize: '0.8rem', 
-                                fontWeight: 700, 
-                                display: 'inline-flex', 
-                                alignItems: 'center', 
-                                gap: '0.35rem' 
-                              }}
-                            >
-                              <CheckSquare size={14} />
-                              <span>Completed</span>
-                            </span>
-                          ) : (
-                            <span 
-                              style={{ 
-                                background: '#fff7ed', 
-                                color: '#c2410c', 
-                                border: '1px solid #ffedd5', 
-                                padding: '0.4rem 0.75rem', 
-                                borderRadius: '0.375rem', 
-                                fontSize: '0.8rem', 
-                                fontWeight: 700, 
-                                display: 'inline-flex', 
-                                alignItems: 'center', 
-                                gap: '0.35rem' 
-                              }}
-                            >
-                              <Clock size={14} />
-                              <span>Pending</span>
-                            </span>
-                          )}
+                            {isDone ? <CheckSquare size={16} /> : <Square size={16} />}
+                            <span>{isDone ? 'Completed' : 'Mark Completed'}</span>
+                          </button>
                         </div>
                       </div>
                     );

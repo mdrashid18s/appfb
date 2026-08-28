@@ -210,7 +210,7 @@ export default function NoticeboardView({ embedded = true, student = null }) {
                   <label>NOTICE TITLE *</label>
                   <input 
                     type="text" 
-                    placeholder="e.g. BCA 3rd Sem Mid-Term Exam Schedule"
+                    placeholder="e.g. Year 5 11+ Mock Exam Schedule"
                     value={form.title}
                     onChange={e => setForm({ ...form, title: e.target.value })}
                     required

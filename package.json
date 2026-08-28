@@ -1,0 +1,15 @@
+{
+  "name": "appfb-app",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Student Portal & Store Monorepo Runner",
+  "scripts": {
+    "dev:backend": "C:\\xampp\\php\\php.exe backend/artisan serve --host=0.0.0.0 --port=8000 --no-reload",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev": "npx -y concurrently -k -n \"BACKEND,FRONTEND\" -c \"cyan,magenta\" \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "start": "npm run dev"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

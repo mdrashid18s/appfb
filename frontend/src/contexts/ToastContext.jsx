@@ -1,43 +1,51 @@
 /**
  * @file ToastContext.jsx
  * @description Global Toast Notification Context & Provider.
- * Provides application-wide alert messages (success, error, info) with auto-dismissal.
+ *
+ * Yeh Context poori Application me Alert Popups (Success / Error / Info) ko bina kisi
+ * external library ke cleanly manage karta hai:
+ *   1. `ToastProvider`: Pure app tree ko wrap karta hai aur screen ke upar floating alert banners render karta hai.
+ *   2. `addToast`: Naya notification popup add karta hai aur 3 seconds baad auto-dismiss kar deta hai.
+ *   3. `useToast()` Hook: Kisi bhi component me `const toast = useToast();` likh kar
+ *      `toast.success('Saved!')` ya `toast.error('Failed!')` call karne ki suvidha deta hai.
  */
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import styles from './Toast.module.css';
 
 /**
- * React Context instance holding the toast dispatch helper functions.
+ * Global Toast Context instance create kiya gaya hai
  */
 const ToastContext = createContext(null);
 
 /**
- * ToastProvider component wrapping the app tree.
- * @param {Object} props - Component props containing children elements
- * @returns {JSX.Element} Provider component rendering active toast notifications
+ * ToastProvider: App ko wrap karne wala component
+ * 
+ * @param {Object} props - { children }
+ * @returns {JSX.Element}
  */
 export const ToastProvider = ({ children }) => {
-  /** Array of active toast objects currently displayed on screen */
+  /** toasts: Screen par active notifications ki list/array */
   const [toasts, setToasts] = useState([]);
 
   /**
-   * Helper function to enqueue a new toast notification.
-   * @param {string} message - Notification text message
-   * @param {string} [type='info'] - Toast category ('success', 'error', 'info')
+   * addToast: Naya toast banner create karta hai aur 3 second baad auto-remove karta hai
+   * 
+   * @param {string} message - User ko dikhane wala message text
+   * @param {string} type    - 'success' | 'error' | 'info'
    */
   const addToast = useCallback((message, type = 'info') => {
     const id = Date.now() + Math.random().toString();
     setToasts((prev) => [...prev, { id, message, type }]);
     
-    // Automatically remove the notification banner after 3 seconds
+    // 3 Seconds baad notification banner automatically screen se hat jata hai
     setTimeout(() => {
       setToasts((prev) => prev.filter((toast) => toast.id !== id));
     }, 3000);
   }, []);
 
   /**
-   * Helper API object exposed via context
+   * Global helper functions jo components me use hoti hain
    */
   const toast = {
     success: (msg) => addToast(msg, 'success'),
@@ -48,7 +56,8 @@ export const ToastProvider = ({ children }) => {
   return (
     <ToastContext.Provider value={toast}>
       {children}
-      {/* Floating container holding active toast alert banners */}
+      
+      {/* Screen par float hone wala Alert Popups Container */}
       <div className={styles.toastContainer}>
         {toasts.map((t) => (
           <div key={t.id} className={`${styles.toast} ${styles[t.type]}`}>
@@ -64,8 +73,14 @@ export const ToastProvider = ({ children }) => {
 };
 
 /**
- * Custom hook to consume the Toast Context inside any component.
- * @returns {{ success: Function, error: Function, info: Function }} Toast helper object
+ * useToast: Custom React Hook taaki kisi bhi component me easily alert show kar sakein
+ * 
+ * Usage:
+ *   const toast = useToast();
+ *   toast.success("Assignment successful!");
+ *   toast.error("Invalid credentials!");
+ * 
+ * @returns {{ success: Function, error: Function, info: Function }}
  */
 export const useToast = () => {
   const context = useContext(ToastContext);
